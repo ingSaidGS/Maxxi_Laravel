@@ -3,39 +3,34 @@
 namespace App\Http\Controllers;
 
 use App\Models\Unit;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class UnitController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(): View
     {
         $units = Unit::orderBy('name')->get();
 
-        return response()->json($units);
+        return view('unit.index', compact('units'));
     }
 
     /**
      * Show the form for creating a new resource.
-     *
-     * Sin vistas todavía: se devuelven los valores por defecto del formulario.
      */
-    public function create(): JsonResponse
+    public function create(): View
     {
-        return response()->json([
-            'name' => '',
-            'symbol' => '',
-            'active' => true,
-        ]);
+        return view('unit.create');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:10'],
@@ -43,33 +38,33 @@ class UnitController extends Controller
             'active' => ['boolean'],
         ]);
 
-        $unit = Unit::create($validated);
+        Unit::create($validated);
 
-        return response()->json($unit, 201);
+        return redirect()
+            ->route('units.index')
+            ->with('status', 'Unidad creada correctamente.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Unit $unit): JsonResponse
+    public function show(Unit $unit): View
     {
-        return response()->json($unit);
+        return view('unit.show', compact('unit'));
     }
 
     /**
      * Show the form for editing the specified resource.
-     *
-     * Sin vistas todavía: se devuelven los datos actuales de la unidad.
      */
-    public function edit(Unit $unit): JsonResponse
+    public function edit(Unit $unit): View
     {
-        return response()->json($unit);
+        return view('unit.edit', compact('unit'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Unit $unit): JsonResponse
+    public function update(Request $request, Unit $unit): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:10'],
@@ -79,7 +74,9 @@ class UnitController extends Controller
 
         $unit->update($validated);
 
-        return response()->json($unit);
+        return redirect()
+            ->route('units.show', $unit)
+            ->with('status', 'Unidad actualizada correctamente.');
     }
 
     /**
@@ -87,11 +84,13 @@ class UnitController extends Controller
      *
      * No se realiza borrado físico: solo se cambia "active" a false.
      */
-    public function destroy(Unit $unit): JsonResponse
+    public function destroy(Unit $unit): RedirectResponse
     {
         $unit->update(['active' => false]);
 
-        return response()->json($unit);
+        return redirect()
+            ->route('units.index')
+            ->with('status', 'Unidad dada de baja correctamente.');
     }
 
     /**
@@ -99,10 +98,12 @@ class UnitController extends Controller
      *
      * Vuelve a poner "active" a true.
      */
-    public function restore(Unit $unit): JsonResponse
+    public function restore(Unit $unit): RedirectResponse
     {
         $unit->update(['active' => true]);
 
-        return response()->json($unit);
+        return redirect()
+            ->route('units.index')
+            ->with('status', 'Unidad reactivada correctamente.');
     }
 }

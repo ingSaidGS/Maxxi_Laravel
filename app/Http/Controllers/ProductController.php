@@ -3,40 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use Illuminate\Http\JsonResponse;
+use App\Models\Unit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ProductController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(): View
     {
-        $products = Product::orderBy('name')->get();
+        $products = Product::with('baseUnit')->orderBy('name')->get();
 
-        return response()->json($products);
+        return view('product.index', compact('products'));
     }
 
     /**
      * Show the form for creating a new resource.
-     *
-     * Sin vistas todavía: se devuelven los valores por defecto del formulario.
      */
-    public function create(): JsonResponse
+    public function create(): View
     {
-        return response()->json([
-            'name' => '',
-            'base_unit_id' => null,
-            'reference_purchase_cost' => 0,
-            'active' => true,
-        ]);
+        $units = Unit::orderBy('name')->get();
+
+        return view('product.create', compact('units'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
@@ -45,33 +42,37 @@ class ProductController extends Controller
             'active' => ['boolean'],
         ]);
 
-        $product = Product::create($validated);
+        Product::create($validated);
 
-        return response()->json($product, 201);
+        return redirect()
+            ->route('products.index')
+            ->with('status', 'Producto creado correctamente.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Product $product): JsonResponse
+    public function show(Product $product): View
     {
-        return response()->json($product);
+        $product->load(['baseUnit', 'presentations.unit']);
+
+        return view('product.show', compact('product'));
     }
 
     /**
      * Show the form for editing the specified resource.
-     *
-     * Sin vistas todavía: se devuelven los datos actuales del producto.
      */
-    public function edit(Product $product): JsonResponse
+    public function edit(Product $product): View
     {
-        return response()->json($product);
+        $units = Unit::orderBy('name')->get();
+
+        return view('product.edit', compact('product', 'units'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product): JsonResponse
+    public function update(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
@@ -82,7 +83,9 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        return response()->json($product);
+        return redirect()
+            ->route('products.show', $product)
+            ->with('status', 'Producto actualizado correctamente.');
     }
 
     /**
@@ -90,11 +93,13 @@ class ProductController extends Controller
      *
      * No se realiza borrado físico: solo se cambia "active" a false.
      */
-    public function destroy(Product $product): JsonResponse
+    public function destroy(Product $product): RedirectResponse
     {
         $product->update(['active' => false]);
 
-        return response()->json($product);
+        return redirect()
+            ->route('products.index')
+            ->with('status', 'Producto dado de baja correctamente.');
     }
 
     /**
@@ -102,10 +107,12 @@ class ProductController extends Controller
      *
      * Vuelve a poner "active" a true.
      */
-    public function restore(Product $product): JsonResponse
+    public function restore(Product $product): RedirectResponse
     {
         $product->update(['active' => true]);
 
-        return response()->json($product);
+        return redirect()
+            ->route('products.index')
+            ->with('status', 'Producto reactivado correctamente.');
     }
 }

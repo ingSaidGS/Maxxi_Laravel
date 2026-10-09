@@ -2,45 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\ProductPresentation;
-use Illuminate\Http\JsonResponse;
+use App\Models\Unit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ProductPresentationController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index(): JsonResponse
-    {
-        $presentations = ProductPresentation::orderBy('id')->get();
-
-        return response()->json($presentations);
-    }
-
-    /**
      * Show the form for creating a new resource.
-     *
-     * Sin vistas todavía: se devuelven los valores por defecto del formulario.
      */
-    public function create(): JsonResponse
+    public function create(Request $request): View
     {
-        return response()->json([
-            'product_id' => null,
-            'unit_id' => null,
-            'conversion_factor' => 1,
-            'sale_price' => 0,
-            'purchase_enable' => true,
-            'sale_enable' => true,
-            'barcode' => null,
-            'active' => true,
-        ]);
+        $product = Product::findOrFail($request->integer('product_id'));
+        $units = Unit::orderBy('name')->get();
+
+        return view('product-presentation.create', compact('product', 'units'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
@@ -55,31 +40,39 @@ class ProductPresentationController extends Controller
 
         $presentation = ProductPresentation::create($validated);
 
-        return response()->json($presentation, 201);
+        return redirect()
+            ->route('products.show', $presentation->product_id)
+            ->with('status', 'Presentación creada correctamente.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(ProductPresentation $productPresentation): JsonResponse
+    public function show(ProductPresentation $productPresentation): View
     {
-        return response()->json($productPresentation);
+        $productPresentation->load(['product', 'unit']);
+
+        return view('product-presentation.show', ['presentation' => $productPresentation]);
     }
 
     /**
      * Show the form for editing the specified resource.
-     *
-     * Sin vistas todavía: se devuelven los datos actuales de la presentación.
      */
-    public function edit(ProductPresentation $productPresentation): JsonResponse
+    public function edit(ProductPresentation $productPresentation): View
     {
-        return response()->json($productPresentation);
+        $productPresentation->load('product');
+        $units = Unit::orderBy('name')->get();
+
+        return view('product-presentation.edit', [
+            'presentation' => $productPresentation,
+            'units' => $units,
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ProductPresentation $productPresentation): JsonResponse
+    public function update(Request $request, ProductPresentation $productPresentation): RedirectResponse
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
@@ -94,7 +87,9 @@ class ProductPresentationController extends Controller
 
         $productPresentation->update($validated);
 
-        return response()->json($productPresentation);
+        return redirect()
+            ->route('product-presentations.show', $productPresentation)
+            ->with('status', 'Presentación actualizada correctamente.');
     }
 
     /**
@@ -102,11 +97,13 @@ class ProductPresentationController extends Controller
      *
      * No se realiza borrado físico: solo se cambia "active" a false.
      */
-    public function destroy(ProductPresentation $productPresentation): JsonResponse
+    public function destroy(ProductPresentation $productPresentation): RedirectResponse
     {
         $productPresentation->update(['active' => false]);
 
-        return response()->json($productPresentation);
+        return redirect()
+            ->route('products.show', $productPresentation->product_id)
+            ->with('status', 'Presentación dada de baja correctamente.');
     }
 
     /**
@@ -114,10 +111,12 @@ class ProductPresentationController extends Controller
      *
      * Vuelve a poner "active" a true.
      */
-    public function restore(ProductPresentation $productPresentation): JsonResponse
+    public function restore(ProductPresentation $productPresentation): RedirectResponse
     {
         $productPresentation->update(['active' => true]);
 
-        return response()->json($productPresentation);
+        return redirect()
+            ->route('products.show', $productPresentation->product_id)
+            ->with('status', 'Presentación reactivada correctamente.');
     }
 }

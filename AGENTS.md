@@ -10,8 +10,9 @@ Leer antes de modificar cualquier archivo.
 - **Nombre:** Maxxi Laravel
 - **Tipo:** Aplicación web Laravel (sistema de inventario y ventas tipo punto de venta).
 - **Idioma de trabajo:** español (nombres de dominio, mensajes y comunicación con el usuario).
-- **Estado:** en desarrollo. Migraciones, modelos, seeders y (parcialmente) controllers ya existen.
-  Aún **no hay vistas ni rutas** de los recursos de negocio.
+- **Estado:** en desarrollo. Migraciones, modelos, seeders y controllers (con lógica) ya existen.
+  Rutas de recursos **registradas** en `routes/web.php` (protegidas con `auth`); **sin vistas** todavía
+  (las respuestas de los controllers son JSON).
 
 ---
 
@@ -129,6 +130,20 @@ Unit ──< Product ──< ProductPresentation ──< SaleDetail >── Sale
 - Usar **Laravel Pint** para formato: `vendor/bin/pint`.
 - Seguir el estilo del código existente (PSR-12, docblocks descriptivos en español).
 
+### 4.6 Rutas (`routes/web.php`)
+
+- Todas las rutas de negocio van dentro del grupo `Route::middleware('auth')` (coherente con `/profile` y `/dashboard`).
+- Se registran con `Route::resource` para: `units`, `products`, `product-presentations`, `sales`, `sale-details` (38 rutas en total).
+- Las entidades con baja lógica (`units`, `products`, `product-presentations`) declaran su `restore` **antes** del `resource`:
+  ```php
+  Route::patch('units/{unit}/restore', [UnitController::class, 'restore'])->name('units.restore');
+  Route::resource('units', UnitController::class);
+  ```
+- URIs en **kebab-case**; el parámetro del route-model binding va en **snake_case**:
+  `product-presentations/{product_presentation}` ↔ `$productPresentation` y `sale-details/{sale_detail}` ↔ `$saleDetail`.
+- `UserController` todavía **no** tiene rutas (es un esqueleto vacío).
+- `sales` y `sale-details` **no** tienen `restore`; su `destroy` responde `405`.
+
 ---
 
 ## 5. Regla clave: eliminación lógica mediante `active`
@@ -168,11 +183,11 @@ Si se necesita volumen aleatorio, crear factories primero.
 
 ### 6.4 Pendientes conocidos
 
-- Rutas de recursos **no registradas** → los controllers no son alcanzables por HTTP.
-- Vistas **no creadas**.
-- `PresentationController` existe pero **no hay modelo `Presentation`** (se creó a petición explícita). Debe decidirse: crear el modelo o eliminar el controller.
+- Vistas **no creadas** (los controllers responden JSON, ver §4.3).
+- `UserController` sigue siendo un **esqueleto vacío** (sin lógica ni rutas).
 - No existe `routes/api.php` (Laravel 12 no lo crea por defecto).
 - No hay Form Requests (validación inline en controllers).
+- `User` no tiene la relación inversa `sales()` (ver §3.2).
 
 ---
 

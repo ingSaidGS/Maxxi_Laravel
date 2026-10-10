@@ -15,27 +15,28 @@ class SaleDetailSeeder extends Seeder
     public function run(): void
     {
         $sales = Sale::pluck('id', 'customer_name');
-        $presentations = ProductPresentation::pluck('id', 'barcode');
 
         $details = [
-            ['customer' => 'Juan Pérez', 'barcode' => '1000000001', 'quantity' => 2, 'conversion_factor' => 1, 'subtotal' => 25.0],
-            ['customer' => 'Juan Pérez', 'barcode' => '1000000004', 'quantity' => 1, 'conversion_factor' => 1, 'subtotal' => 8.0],
-            ['customer' => 'María López', 'barcode' => '1000000006', 'quantity' => 6, 'conversion_factor' => 1, 'subtotal' => 18.0],
-            ['customer' => 'María López', 'barcode' => '1000000007', 'quantity' => 2, 'conversion_factor' => 1, 'subtotal' => 11.0],
-            ['customer' => 'Carlos Ruiz', 'barcode' => '1000000005', 'quantity' => 1, 'conversion_factor' => 1, 'subtotal' => 15.0],
+            ['customer' => 'Juan Pérez', 'barcode' => '1000000001', 'quantity' => 2],
+            ['customer' => 'Juan Pérez', 'barcode' => '1000000004', 'quantity' => 1],
+            ['customer' => 'María López', 'barcode' => '1000000006', 'quantity' => 6],
+            ['customer' => 'María López', 'barcode' => '1000000007', 'quantity' => 2],
+            ['customer' => 'Carlos Ruiz', 'barcode' => '1000000005', 'quantity' => 1],
         ];
 
         foreach ($details as $detail) {
+            $presentation = ProductPresentation::where('barcode', $detail['barcode'])->firstOrFail();
+
             SaleDetail::updateOrCreate(
                 [
                     'sale_id' => $sales[$detail['customer']],
-                    'presentation_id' => $presentations[$detail['barcode']],
+                    'presentation_id' => $presentation->id,
                 ],
                 [
                     'quantity' => $detail['quantity'],
-                    'conversion_factor' => $detail['conversion_factor'],
-                    'sale_enable' => true,
-                    'subtotal' => $detail['subtotal'],
+                    'conversion_factor' => $presentation->conversion_factor,
+                    'sale_enable' => $presentation->sale_enable,
+                    'subtotal' => round($detail['quantity'] * (float) $presentation->sale_price, 1),
                 ],
             );
         }

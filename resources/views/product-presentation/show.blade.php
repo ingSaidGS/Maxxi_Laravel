@@ -29,13 +29,19 @@
         <dd>{{ $presentation->conversion_factor }}</dd>
 
         <dt>Precio de venta</dt>
-        <dd>{{ $presentation->sale_price }}</dd>
+        <dd>{{ $presentation->sale_price ?? '—' }}</dd>
 
         <dt>Compra habilitada</dt>
         <dd>{{ $presentation->purchase_enable ? 'Sí' : 'No' }}</dd>
 
         <dt>Venta habilitada</dt>
         <dd>{{ $presentation->sale_enable ? 'Sí' : 'No' }}</dd>
+
+        <dt>Costo de compra de referencia</dt>
+        <dd>{{ $presentation->reference_purchase_cost ?? '—' }}</dd>
+
+        <dt>Ganancia deseada</dt>
+        <dd>{{ $presentation->desired_profit }}</dd>
 
         <dt>Código de barras</dt>
         <dd>{{ $presentation->barcode ?? '—' }}</dd>

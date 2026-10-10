@@ -24,7 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('units/{unit}/restore', [UnitController::class, 'restore'])->name('units.restore');
     Route::resource('units', UnitController::class);
 
-    // Productos (baja lógica vía "active" + restore)
+    // Productos (baja lógica vía "active" + restore; stock se fija desde products.show)
+    Route::patch('products/{product}/stock', [ProductController::class, 'updateStock'])->name('products.stock.update');
     Route::patch('products/{product}/restore', [ProductController::class, 'restore'])->name('products.restore');
     Route::resource('products', ProductController::class);
 

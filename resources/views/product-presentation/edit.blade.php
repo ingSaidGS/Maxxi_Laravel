@@ -44,10 +44,10 @@
                    value="{{ old('conversion_factor', $presentation->conversion_factor) }}" step="1" min="0" required>
         </p>
 
-        <p>
+        <p id="sale-price-wrapper" hidden>
             <label for="sale_price">Precio de venta</label>
             <input type="number" id="sale_price" name="sale_price"
-                   value="{{ old('sale_price', $presentation->sale_price) }}" step="0.1" min="0" required>
+                   value="{{ old('sale_price', $presentation->sale_price) }}" step="0.1" min="0">
         </p>
 
         <p>
@@ -66,6 +66,18 @@
             </label>
         </p>
 
+        <p id="reference-purchase-cost-wrapper" hidden>
+            <label for="reference_purchase_cost">Costo de compra de referencia</label>
+            <input type="number" id="reference_purchase_cost" name="reference_purchase_cost"
+                   value="{{ old('reference_purchase_cost', $presentation->reference_purchase_cost) }}" step="0.01" min="0" @required(old('purchase_enable', $presentation->purchase_enable))>
+        </p>
+
+        <p>
+            <label for="desired_profit">Ganancia deseada</label>
+            <input type="number" id="desired_profit" name="desired_profit"
+                   value="{{ old('desired_profit', $presentation->desired_profit) }}" step="0.1" min="0" required>
+        </p>
+
         <p>
             <label for="barcode">Código de barras (opcional)</label>
             <input type="text" id="barcode" name="barcode" value="{{ old('barcode', $presentation->barcode) }}" maxlength="20">
@@ -76,5 +88,69 @@
             <a href="{{ route('products.show', $presentation->product_id) }}">Cancelar</a>
         </p>
     </form>
+
+    <script>
+        const purchaseToggle = document.querySelector('input[name="purchase_enable"][value="1"]');
+        const saleToggle = document.querySelector('input[name="sale_enable"][value="1"]');
+        const costWrapper = document.getElementById('reference-purchase-cost-wrapper');
+        const costInput = document.getElementById('reference_purchase_cost');
+        const saleWrapper = document.getElementById('sale-price-wrapper');
+        const saleInput = document.getElementById('sale_price');
+        const conversionInput = document.getElementById('conversion_factor');
+        const profitInput = document.getElementById('desired_profit');
+
+        // Costo del producto por unidad mínima, tomado de la presentación de compra
+        // que ya exista para este producto (null si no hay ninguna).
+        const costPerBaseUnit = {{ $purchaseCostPerBaseUnit !== null ? json_encode($purchaseCostPerBaseUnit) : 'null' }};
+
+        const calculateSalePrice = () => {
+            if (costPerBaseUnit === null || !saleToggle.checked) {
+                return;
+            }
+
+            const conversion = parseFloat(conversionInput.value) || 0;
+            const profit = parseFloat(profitInput.value) || 0;
+            const salePrice = costPerBaseUnit * conversion + profit;
+
+            saleInput.value = (Math.round(salePrice * 10) / 10).toFixed(1);
+        };
+
+        const syncFields = () => {
+            const purchaseEnabled = purchaseToggle.checked;
+            const saleEnabled = saleToggle.checked;
+
+            costWrapper.hidden = !purchaseEnabled;
+            costInput.disabled = !purchaseEnabled;
+            costInput.required = purchaseEnabled;
+            if (!purchaseEnabled) {
+                costInput.value = '';
+            }
+
+            // Sin presentación de compra activa no se puede fijar el precio de venta.
+            const salePriceLocked = costPerBaseUnit === null;
+
+            saleWrapper.hidden = !saleEnabled;
+            saleInput.disabled = !saleEnabled || salePriceLocked;
+            saleInput.placeholder = salePriceLocked ? 'Requiere una presentación de compra activa' : '';
+            if (!saleEnabled || salePriceLocked) {
+                saleInput.value = '';
+            }
+        };
+
+        purchaseToggle.addEventListener('change', syncFields);
+        saleToggle.addEventListener('change', () => {
+            syncFields();
+            calculateSalePrice();
+        });
+        conversionInput.addEventListener('input', calculateSalePrice);
+        profitInput.addEventListener('input', calculateSalePrice);
+
+        syncFields();
+
+        // Solo se precarga si no hay un valor previo (p. ej. tras un error de validación).
+        if (saleInput.value.trim() === '') {
+            calculateSalePrice();
+        }
+    </script>
 </body>
 </html>

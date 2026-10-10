@@ -20,6 +20,8 @@ class ProductPresentation extends Model
         'sale_price',
         'purchase_enable',
         'sale_enable',
+        'reference_purchase_cost',
+        'desired_profit',
         'barcode',
         'active',
     ];
@@ -33,6 +35,8 @@ class ProductPresentation extends Model
     {
         return [
             'sale_price' => 'decimal:1',
+            'reference_purchase_cost' => 'decimal:2',
+            'desired_profit' => 'decimal:1',
             'purchase_enable' => 'boolean',
             'sale_enable' => 'boolean',
             'active' => 'boolean',

@@ -22,7 +22,7 @@
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Unidad base</th>
-                <th>Costo ref.</th>
+                <th>Stock</th>
                 <th>Activo</th>
                 <th>Acciones</th>
             </tr>
@@ -39,7 +39,7 @@
                             —
                         @endif
                     </td>
-                    <td>{{ $product->reference_purchase_cost }}</td>
+                    <td>{{ $product->stock }}</td>
                     <td>{{ $product->active ? 'Sí' : 'No' }}</td>
                     <td>
                         <a href="{{ route('products.show', $product) }}">Ver</a>

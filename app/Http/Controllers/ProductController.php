@@ -38,7 +38,6 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
-            'reference_purchase_cost' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
             'active' => ['boolean'],
         ]);
 
@@ -77,7 +76,6 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
-            'reference_purchase_cost' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
             'active' => ['boolean'],
         ]);
 
@@ -86,6 +84,41 @@ class ProductController extends Controller
         return redirect()
             ->route('products.show', $product)
             ->with('status', 'Producto actualizado correctamente.');
+    }
+
+    /**
+     * Fija el stock del producto a partir de la presentación de compra activa.
+     *
+     * El stock se guarda en unidad base: paquetes * factor de conversión de la
+     * presentación de compra + unidades sueltas.
+     */
+    public function updateStock(Request $request, Product $product): RedirectResponse
+    {
+        $purchasePresentation = $product->presentations()
+            ->where('purchase_enable', true)
+            ->where('active', true)
+            ->first();
+
+        if ($purchasePresentation === null) {
+            return redirect()
+                ->route('products.show', $product)
+                ->withErrors(['stock' => 'El producto no tiene una presentación de compra activa.']);
+        }
+
+        $validated = $request->validate([
+            'stock_packages' => ['nullable', 'integer', 'min:0'],
+            'stock_loose' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $conversionFactor = max(1, (int) $purchasePresentation->conversion_factor);
+        $packages = (int) ($validated['stock_packages'] ?? 0);
+        $loose = (int) ($validated['stock_loose'] ?? 0);
+
+        $product->update(['stock' => $packages * $conversionFactor + $loose]);
+
+        return redirect()
+            ->route('products.show', $product)
+            ->with('status', 'Stock actualizado correctamente.');
     }
 
     /**

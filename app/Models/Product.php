@@ -16,7 +16,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'base_unit_id',
-        'reference_purchase_cost',
+        'stock',
         'active',
     ];
 
@@ -28,7 +28,7 @@ class Product extends Model
     protected function casts(): array
     {
         return [
-            'reference_purchase_cost' => 'decimal:2',
+            'stock' => 'integer',
             'active' => 'boolean',
         ];
     }

@@ -16,12 +16,12 @@ return new class extends Migration
             $table->id();
             $table->string('name', 20);
             $table->foreignId('base_unit_id')->constrained('units');
-            $table->decimal('reference_purchase_cost', 10, 2);
+            $table->integer('stock')->default(0);
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE products ADD CONSTRAINT products_reference_purchase_cost_check CHECK (reference_purchase_cost >= 0)');
+        DB::statement('ALTER TABLE products ADD CONSTRAINT products_stock_check CHECK (stock >= 0)');
     }
 
     /**

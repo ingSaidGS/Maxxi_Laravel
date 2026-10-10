@@ -38,12 +38,6 @@
         </p>
 
         <p>
-            <label for="reference_purchase_cost">Costo de compra de referencia</label>
-            <input type="number" id="reference_purchase_cost" name="reference_purchase_cost"
-                   value="{{ old('reference_purchase_cost', $product->reference_purchase_cost) }}" step="0.01" min="0" required>
-        </p>
-
-        <p>
             <button type="submit">Actualizar</button>
             <a href="{{ route('products.index') }}">Cancelar</a>
         </p>

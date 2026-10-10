@@ -16,13 +16,13 @@ class ProductSeeder extends Seeder
         $units = Unit::pluck('id', 'symbol');
 
         $products = [
-            ['name' => 'Arroz', 'base_unit_id' => $units['kg'], 'reference_purchase_cost' => 9.50],
-            ['name' => 'Azúcar', 'base_unit_id' => $units['kg'], 'reference_purchase_cost' => 7.80],
-            ['name' => 'Leche', 'base_unit_id' => $units['l'], 'reference_purchase_cost' => 6.00],
-            ['name' => 'Aceite', 'base_unit_id' => $units['l'], 'reference_purchase_cost' => 12.00],
-            ['name' => 'Refresco', 'base_unit_id' => $units['und'], 'reference_purchase_cost' => 2.10],
-            ['name' => 'Galletas', 'base_unit_id' => $units['pqt'], 'reference_purchase_cost' => 4.00],
-            ['name' => 'Huevos', 'base_unit_id' => $units['doc'], 'reference_purchase_cost' => 14.00],
+            ['name' => 'Arroz', 'base_unit_id' => $units['kg'], 'stock' => 50],
+            ['name' => 'Azúcar', 'base_unit_id' => $units['kg'], 'stock' => 40],
+            ['name' => 'Leche', 'base_unit_id' => $units['l'], 'stock' => 30],
+            ['name' => 'Aceite', 'base_unit_id' => $units['l'], 'stock' => 25],
+            ['name' => 'Refresco', 'base_unit_id' => $units['und'], 'stock' => 100],
+            ['name' => 'Galletas', 'base_unit_id' => $units['pqt'], 'stock' => 60],
+            ['name' => 'Huevos', 'base_unit_id' => $units['doc'], 'stock' => 20],
         ];
 
         foreach ($products as $product) {

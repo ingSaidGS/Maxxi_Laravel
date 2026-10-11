@@ -3,7 +3,9 @@
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductPresentationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleNoteController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +39,16 @@ Route::middleware('auth')->group(function () {
     Route::get('sales/{sale}/ticket', [SaleController::class, 'ticket'])->name('sales.ticket');
     Route::patch('sales/{sale}/cobrar', [SaleController::class, 'cobrar'])->name('sales.cobrar');
     Route::resource('sales', SaleController::class);
+
+    // Compras (cabecera + detalle). El detalle se gestiona dentro de la compra (carrito).
+    Route::resource('purchases', PurchaseController::class);
+
+    // Notas de venta (preventa/pedido). Al entregar se genera la venta.
+    // El detalle se quita/reactiva de forma individual (baja lógica vía "active").
+    Route::post('sale-notes/{sale_note}/entregar', [SaleNoteController::class, 'entregar'])->name('sale-notes.entregar');
+    Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/deactivate', [SaleNoteController::class, 'deactivateDetail'])->name('sale-notes.details.deactivate');
+    Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/restore', [SaleNoteController::class, 'restoreDetail'])->name('sale-notes.details.restore');
+    Route::resource('sale-notes', SaleNoteController::class);
 });
 
 require __DIR__.'/auth.php';

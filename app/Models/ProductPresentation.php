@@ -66,4 +66,12 @@ class ProductPresentation extends Model
     {
         return $this->hasMany(SaleDetail::class, 'presentation_id');
     }
+
+    /**
+     * Get the sale note details of the presentation.
+     */
+    public function saleNoteDetails(): HasMany
+    {
+        return $this->hasMany(SaleNoteDetail::class, 'presentation_id');
+    }
 }

@@ -5,6 +5,8 @@
         ['label' => 'Unidades', 'href' => route('units.index'), 'active' => request()->routeIs('units.*')],
         ['label' => 'Productos', 'href' => route('products.index'), 'active' => request()->routeIs('products.*') || request()->routeIs('product-presentations.*')],
         ['label' => 'Ventas', 'href' => route('sales.index'), 'active' => request()->routeIs('sales.*')],
+        ['label' => 'Notas de venta', 'href' => route('sale-notes.index'), 'active' => request()->routeIs('sale-notes.*')],
+        ['label' => 'Compras', 'href' => route('purchases.index'), 'active' => request()->routeIs('purchases.*')],
     ];
 @endphp
 

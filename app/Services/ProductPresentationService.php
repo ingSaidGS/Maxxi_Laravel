@@ -29,6 +29,7 @@ class ProductPresentationService
         $presentation = ProductPresentation::create($data);
 
         if ($purchaseEnabled && $isActive) {
+            $this->syncBaseUnitCost($presentation);
             $this->recalculateSalePrices($presentation);
         }
 
@@ -52,6 +53,7 @@ class ProductPresentationService
         $presentation->update($data);
 
         if ($purchaseEnabled && $isActive) {
+            $this->syncBaseUnitCost($presentation);
             $this->recalculateSalePrices($presentation);
         }
 
@@ -119,6 +121,25 @@ class ProductPresentationService
                 'purchase_enable' => 'Ya existe una presentación activa habilitada para compra en este producto.',
             ]);
         }
+    }
+
+    /**
+     * Sincroniza el costo por unidad base del producto con la presentación de compra.
+     *
+     * "base_unit_cost" = reference_purchase_cost / conversion_factor.
+     * Se omite si el factor de conversión es menor o igual a cero.
+     */
+    private function syncBaseUnitCost(ProductPresentation $purchasePresentation): void
+    {
+        $conversionFactor = (int) $purchasePresentation->conversion_factor;
+
+        if ($conversionFactor <= 0) {
+            return;
+        }
+
+        $baseUnitCost = (float) $purchasePresentation->reference_purchase_cost / $conversionFactor;
+
+        $purchasePresentation->product?->update(['base_unit_cost' => round($baseUnitCost, 2)]);
     }
 
     /**

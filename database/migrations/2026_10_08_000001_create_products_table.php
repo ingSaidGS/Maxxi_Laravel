@@ -17,11 +17,13 @@ return new class extends Migration
             $table->string('name', 20);
             $table->foreignId('base_unit_id')->constrained('units');
             $table->integer('stock')->default(0);
+            $table->decimal('base_unit_cost', 10, 2)->default(0);
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
 
         DB::statement('ALTER TABLE products ADD CONSTRAINT products_stock_check CHECK (stock >= 0)');
+        DB::statement('ALTER TABLE products ADD CONSTRAINT products_base_unit_cost_check CHECK (base_unit_cost >= 0)');
     }
 
     /**

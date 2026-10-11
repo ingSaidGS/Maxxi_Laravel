@@ -17,6 +17,7 @@ class Product extends Model
         'name',
         'base_unit_id',
         'stock',
+        'base_unit_cost',
         'active',
     ];
 
@@ -29,6 +30,7 @@ class Product extends Model
     {
         return [
             'stock' => 'integer',
+            'base_unit_cost' => 'decimal:2',
             'active' => 'boolean',
         ];
     }

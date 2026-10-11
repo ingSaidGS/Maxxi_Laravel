@@ -86,12 +86,12 @@
         </div>
     </nav>
 
-    {{-- Panel desplegable (móvil) --}}
+    {{-- Panel desplegable (menú) --}}
     <div
         x-cloak
         x-show="open"
         x-transition
-        class="border-t border-white/10 bg-maxxi-navy md:hidden"
+        class="border-t border-white/10 bg-maxxi-navy"
     >
         <div class="space-y-1 px-4 py-3 sm:px-6">
             @auth

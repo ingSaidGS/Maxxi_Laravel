@@ -40,14 +40,14 @@
     @endif
 
     {{-- Formulario --}}
-    <form action="{{ route('units.store') }}" method="POST"
+    <form id="unit-form" action="{{ route('units.store') }}" method="POST"
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
                 <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="10" required autofocus
+                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="10" required autofocus autocomplete="off" placeholder="Ej.: Kilogramo"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('name')
@@ -57,7 +57,7 @@
 
             <div>
                 <label for="symbol" class="mb-1 block text-sm font-medium text-gray-700">Símbolo</label>
-                <input type="text" id="symbol" name="symbol" value="{{ old('symbol') }}" maxlength="3" required
+                <input type="text" id="symbol" name="symbol" value="{{ old('symbol') }}" maxlength="3" required autocomplete="off" placeholder="Ej.: kg"
                        @error('symbol') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('symbol') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('symbol')
@@ -76,4 +76,84 @@
             </button>
         </div>
     </form>
+
+    {{-- Modal: confirmar la creación de la unidad --}}
+    <x-modal name="confirm-unit" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-orange/10 text-maxxi-orange-dark">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Registrar esta unidad?</h2>
+                    <p id="confirm-unit-summary" class="mb-0 text-sm text-gray-600"></p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-unit')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-unit-button" class="{{ $botones['primario'] }}">
+                    Sí, registrar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación antes de enviar el formulario --}}
+    <script>
+        (function () {
+            var form = document.getElementById('unit-form');
+            var nameInput = document.getElementById('name');
+            var symbolInput = document.getElementById('symbol');
+            var summary = document.getElementById('confirm-unit-summary');
+            var confirmButton = document.getElementById('confirm-unit-button');
+            var bypassConfirm = false;
+
+            function openConfirmModal() {
+                var name = (nameInput?.value || '').trim();
+                var symbol = (symbolInput?.value || '').trim();
+
+                if (summary) {
+                    summary.textContent = 'Se creará la unidad «' + name + '» con símbolo «' + symbol + '».';
+                }
+
+                if (window.Alpine) {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-unit' }));
+                    return;
+                }
+
+                // Respaldo por si el modal no está disponible.
+                if (window.confirm('¿Registrar la unidad «' + name + '»?')) {
+                    bypassConfirm = true;
+                    form.requestSubmit();
+                    bypassConfirm = false;
+                }
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (bypassConfirm) { return; }
+
+                event.preventDefault();
+                openConfirmModal();
+            });
+
+            confirmButton.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'confirm-unit' }));
+
+                bypassConfirm = true;
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+
+                bypassConfirm = false;
+            });
+        })();
+    </script>
 </x-layouts.sistema>

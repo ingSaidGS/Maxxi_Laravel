@@ -147,7 +147,7 @@ class ProductPresentationService
      *
      * A partir del costo por unidad mínima de la presentación de compra, cada
      * presentación recibe: costo_unitario * conversion_factor + desired_profit,
-     * redondeado a un decimal.
+     * aplicando el redondeo especial de precios de venta (ver roundSalePrice).
      */
     private function recalculateSalePrices(ProductPresentation $purchasePresentation): void
     {
@@ -167,7 +167,38 @@ class ProductPresentationService
             ->each(function (ProductPresentation $presentation) use ($costPerBaseUnit) {
                 $salePrice = $costPerBaseUnit * (int) $presentation->conversion_factor + (float) $presentation->desired_profit;
 
-                $presentation->update(['sale_price' => round($salePrice, 1)]);
+                $presentation->update(['sale_price' => $this->roundSalePrice($salePrice)]);
             });
+    }
+
+    /**
+     * Redondeo especial para los precios de venta recalculados automáticamente.
+     *
+     * A partir de la parte decimal del valor:
+     *  - menor a 0.3  -> se redondea hacia abajo (N).
+     *  - de 0.3 a 0.6 -> se redondea a N.5.
+     *  - mayor a 0.6  -> se redondea hacia arriba (N+1).
+     *
+     * Ej.: 9.1 -> 9 ; 9.45 -> 9.5 ; 9.8 -> 10.
+     *
+     * Solo se aplica en el recálculo automático de sale_price (al agregar o
+     * cambiar el reference_purchase_cost de la presentación de compra). La
+     * edición manual del precio de venta no usa este redondeo.
+     */
+    private function roundSalePrice(float $value): float
+    {
+        $integer = floor($value);
+        // Se compara en centésimas para evitar errores de punto flotante en los límites.
+        $hundredths = (int) round(($value - $integer) * 100);
+
+        if ($hundredths < 30) {
+            return (float) $integer;
+        }
+
+        if ($hundredths <= 60) {
+            return $integer + 0.5;
+        }
+
+        return $integer + 1.0;
     }
 }

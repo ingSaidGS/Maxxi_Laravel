@@ -34,19 +34,37 @@ class SaleController extends Controller
      */
     public function create(): View
     {
-        $presentations = ProductPresentation::with(['product', 'unit'])
+        $presentations = ProductPresentation::with(['product.baseUnit', 'unit'])
             ->where('sale_enable', true)
             ->where('active', true)
             ->orderBy('id')
             ->get()
-            ->map(fn (ProductPresentation $presentation): array => [
-                'id' => $presentation->id,
-                'label' => trim(
-                    ($presentation->product?->name ?? '—').' — '.($presentation->unit?->name ?? '')
-                    .' (x'.$presentation->conversion_factor.')'
-                ),
-                'price' => (float) $presentation->sale_price,
-            ])
+            ->map(function (ProductPresentation $presentation): array {
+                // La presentación se identifica por su unidad + factor de conversión
+                // (cuántas unidades base contiene). El "sizeLabel" es la equivalencia
+                // legible, p. ej. "x24 kg", que evita confundir dos presentaciones
+                // del mismo producto con la misma unidad y distinto factor.
+                $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
+                $sizeLabel = 'x'.$presentation->conversion_factor.($baseUnitSymbol ? ' '.$baseUnitSymbol : '');
+
+                return [
+                    'id' => $presentation->id,
+                    'label' => trim(
+                        ($presentation->product?->name ?? '—').' — '.($presentation->unit?->name ?? '')
+                        .' ('.$sizeLabel.')'
+                    ),
+                    'price' => (float) $presentation->sale_price,
+                    'barcode' => $presentation->barcode,
+                    'productId' => $presentation->product_id,
+                    'productName' => $presentation->product?->name,
+                    'unitName' => $presentation->unit?->name,
+                    'unitSymbol' => $presentation->unit?->symbol,
+                    'conversionFactor' => (int) $presentation->conversion_factor,
+                    'sizeLabel' => $sizeLabel,
+                    'baseUnitName' => $presentation->product?->baseUnit?->name,
+                    'baseUnitSymbol' => $baseUnitSymbol,
+                ];
+            })
             ->values();
 
         return view('sale.create', compact('presentations'));
@@ -66,6 +84,8 @@ class SaleController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeEmptyMoney($request);
+
         $validated = $request->validate($this->rules());
         $details = $this->validatedDetails($request);
 
@@ -88,6 +108,8 @@ class SaleController extends Controller
         $this->ensureCustomerForFiada($amounts['status'], $validated);
 
         $validated['total'] = $amounts['total'];
+        $validated['cash'] = $amounts['cash'];
+        $validated['qr'] = $amounts['qr'];
         $validated['status'] = $amounts['status'];
         $validated['debt'] = $amounts['debt'];
         $validated['user_id'] = $request->user()->id;
@@ -107,8 +129,14 @@ class SaleController extends Controller
         });
 
         return redirect()
-            ->route('sales.show', $sale)
-            ->with('status', $this->saleStatusMessage('registrada', $amounts['status'], $amounts['debt']));
+            ->route('sales.create')
+            ->with('success', [
+                'status' => $amounts['status'],
+                'debt' => $amounts['debt'],
+                'total' => $amounts['total'],
+                'change' => $amounts['change'],
+                'sale_id' => $sale->id,
+            ]);
     }
 
     /**
@@ -116,9 +144,23 @@ class SaleController extends Controller
      */
     public function show(Sale $sale): View
     {
-        $sale->load(['user', 'saleDetails.presentation.product', 'saleDetails.presentation.unit']);
+        $sale->load(['user', 'saleDetails.presentation.product.baseUnit', 'saleDetails.presentation.product.presentations', 'saleDetails.presentation.unit']);
 
         return view('sale.show', compact('sale'));
+    }
+
+    /**
+     * Muestra el ticket de la venta listo para impresión térmica.
+     *
+     * La vista es autónoma (no usa el layout del sistema) para poder imprimir en
+     * rollos de 80mm o 58mm. Carga las mismas relaciones que show() para poder
+     * expresar la cantidad de cada línea en la unidad de su presentación.
+     */
+    public function ticket(Sale $sale): View
+    {
+        $sale->load(['user', 'saleDetails.presentation.product.baseUnit', 'saleDetails.presentation.product.presentations', 'saleDetails.presentation.unit']);
+
+        return view('sale.ticket', compact('sale'));
     }
 
     /**
@@ -140,6 +182,8 @@ class SaleController extends Controller
      */
     public function update(Request $request, Sale $sale): RedirectResponse
     {
+        $this->normalizeEmptyMoney($request);
+
         $validated = $request->validate($this->rules());
 
         $subtotals = (float) $sale->saleDetails()->sum('subtotal');
@@ -147,6 +191,8 @@ class SaleController extends Controller
         $this->ensureCustomerForFiada($amounts['status'], $validated);
 
         $validated['total'] = $amounts['total'];
+        $validated['cash'] = $amounts['cash'];
+        $validated['qr'] = $amounts['qr'];
         $validated['status'] = $amounts['status'];
         $validated['debt'] = $amounts['debt'];
 
@@ -155,6 +201,61 @@ class SaleController extends Controller
         return redirect()
             ->route('sales.show', $sale)
             ->with('status', $this->saleStatusMessage('actualizada', $amounts['status'], $amounts['debt']));
+    }
+
+    /**
+     * Registra el cobro (total o parcial) de una venta fiada.
+     *
+     * Los montos recibidos se suman a lo ya pagado en la venta y el estado y el
+     * fio se recalculan sobre el total existente: si el cobro cubre la deuda la
+     * venta queda "pagada"; si es parcial sigue "fiada" con el fio restante. No
+     * modifica los detalles, el total ni el descuento de la venta.
+     */
+    public function cobrar(Request $request, Sale $sale): RedirectResponse
+    {
+        if ($sale->status !== 'fiada') {
+            return redirect()->route('sales.index')
+                ->withErrors(['cobro' => 'Esta venta ya está pagada.']);
+        }
+
+        $this->normalizeEmptyMoney($request, ['received_cash', 'received_qr']);
+
+        $validated = $request->validate([
+            'received_cash' => ['numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
+            'received_qr' => ['numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
+        ]);
+
+        $receivedCash = (float) ($validated['received_cash'] ?? 0);
+        $receivedQr = (float) ($validated['received_qr'] ?? 0);
+
+        if (round($receivedCash + $receivedQr, 1) <= 0) {
+            throw ValidationException::withMessages([
+                'cobro' => 'Ingresa un monto en efectivo o QR para registrar el cobro.',
+            ]);
+        }
+
+        $amounts = $this->resolveAmounts((float) $sale->total, [
+            'sale_discount' => 0,
+            'cash' => (float) $sale->cash + $receivedCash,
+            'qr' => (float) $sale->qr + $receivedQr,
+        ]);
+
+        $sale->update([
+            'cash' => $amounts['cash'],
+            'qr' => $amounts['qr'],
+            'status' => $amounts['status'],
+            'debt' => $amounts['debt'],
+        ]);
+
+        $message = $amounts['status'] === 'pagada'
+            ? "Cobro registrado. La venta #{$sale->id} quedó PAGADA."
+            : 'Cobro parcial registrado. Fio pendiente: Bs. '.number_format($amounts['debt'], 1).'.';
+
+        if ($amounts['change'] > 0) {
+            $message .= ' Vuelto: Bs. '.number_format($amounts['change'], 1).'.';
+        }
+
+        return redirect()->route('sales.index')->with('status', $message);
     }
 
     /**
@@ -168,6 +269,32 @@ class SaleController extends Controller
         return response()->json([
             'message' => 'Las ventas no se pueden eliminar.',
         ], 405);
+    }
+
+    /**
+     * Normaliza a "0" los importes de pago que llegan vacíos.
+     *
+     * "sale_discount", "cash" y "qr" son obligatorios y no nulos en la base; si el
+     * usuario deja el input vacío, el navegador envía una cadena vacía. Aquí se
+     * reemplaza ese vacío (o solo espacios) por "0" antes de validar.
+     *
+     * @param  array<int, string>  $fields
+     */
+    protected function normalizeEmptyMoney(Request $request, array $fields = ['sale_discount', 'cash', 'qr']): void
+    {
+        $defaults = [];
+
+        foreach ($fields as $field) {
+            $value = $request->input($field);
+
+            if ($value === null || trim((string) $value) === '') {
+                $defaults[$field] = '0';
+            }
+        }
+
+        if ($defaults !== []) {
+            $request->merge($defaults);
+        }
     }
 
     /**
@@ -200,20 +327,37 @@ class SaleController extends Controller
      * pagado (efectivo + QR) y la deuda "fiada" es lo que queda por pagar. En
      * ventas "pagada" la deuda siempre es cero.
      *
+     * El vuelto se devuelve del efectivo: si el pago supera el total, se registra
+     * en "cash" solo lo justo para que efectivo + QR == total (el excedente es el
+     * vuelto y no se guarda). Si el QR por sí solo superara el total, se ajusta
+     * también el QR.
+     *
      * @param  array<string, mixed>  $data
-     * @return array{total: float, paid: float, status: string, debt: float}
+     * @return array{total: float, paid: float, cash: float, qr: float, change: float, status: string, debt: float}
      */
     protected function resolveAmounts(float $subtotals, array $data): array
     {
         $total = round(max(0, $subtotals - (float) $data['sale_discount']), 1);
-        $paid = round((float) $data['cash'] + (float) $data['qr'], 1);
+        $cash = round((float) $data['cash'], 1);
+        $qr = round((float) $data['qr'], 1);
+        $paid = round($cash + $qr, 1);
         $status = $this->resolveStatus($paid, $total);
+        $debt = $status === 'fiada' ? round(max(0, $total - $paid), 1) : 0.0;
+        $change = $status === 'fiada' ? 0.0 : round(max(0, $paid - $total), 1);
+
+        if ($change > 0) {
+            $qr = min($qr, $total);
+            $cash = round(max(0, $total - $qr), 1);
+        }
 
         return [
             'total' => $total,
             'paid' => $paid,
+            'cash' => $cash,
+            'qr' => $qr,
+            'change' => $change,
             'status' => $status,
-            'debt' => $status === 'fiada' ? round(max(0, $total - $paid), 1) : 0.0,
+            'debt' => $debt,
         ];
     }
 

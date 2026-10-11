@@ -58,7 +58,7 @@
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
                 <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text" id="name" name="name" value="{{ old('name', $unit->name) }}" maxlength="10" required autofocus
+                <input type="text" id="name" name="name" value="{{ old('name', $unit->name) }}" maxlength="10" required autofocus autocomplete="off" placeholder="Ej.: Kilogramo"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('name')
@@ -68,7 +68,7 @@
 
             <div>
                 <label for="symbol" class="mb-1 block text-sm font-medium text-gray-700">Símbolo</label>
-                <input type="text" id="symbol" name="symbol" value="{{ old('symbol', $unit->symbol) }}" maxlength="3" required
+                <input type="text" id="symbol" name="symbol" value="{{ old('symbol', $unit->symbol) }}" maxlength="3" required autocomplete="off" placeholder="Ej.: kg"
                        @error('symbol') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('symbol') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('symbol')

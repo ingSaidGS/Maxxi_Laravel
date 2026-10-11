@@ -34,6 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('product-presentations', ProductPresentationController::class)->except('index');
 
     // Ventas (sin borrado físico ni lógico). El detalle se gestiona dentro de la venta (carrito).
+    Route::get('sales/{sale}/ticket', [SaleController::class, 'ticket'])->name('sales.ticket');
+    Route::patch('sales/{sale}/cobrar', [SaleController::class, 'cobrar'])->name('sales.cobrar');
     Route::resource('sales', SaleController::class);
 });
 

@@ -8,6 +8,8 @@
         'marino-sm' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'peligro' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1',
         'exito' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-white px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1',
+        'peligro-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
+        'exito-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
     ];
 
     $purchasePresentation = $product->presentations
@@ -46,6 +48,14 @@
     } elseif ($product->baseUnit !== null) {
         $stockLabel = $stock.' '.$pluralize($product->baseUnit->name, $stock);
     }
+
+    // Valores iniciales del formulario de stock: un 0 se muestra vacío para que
+    // solo se vea el placeholder (evita tener que borrar el cero). Al enviar
+    // vacío, el controlador lo interpreta como 0.
+    $stockPackagesValue = old('stock_packages', $purchaseConversionFactor > 1 ? intdiv($stock, $purchaseConversionFactor) : 0);
+    $stockLooseValue = old('stock_loose', $purchaseConversionFactor > 1 ? $stock % $purchaseConversionFactor : $stock);
+    $stockPackagesInput = (int) $stockPackagesValue === 0 ? '' : (string) $stockPackagesValue;
+    $stockLooseInput = (int) $stockLooseValue === 0 ? '' : (string) $stockLooseValue;
 @endphp
 
 <x-layouts.sistema title="Producto: {{ $product->name }}">
@@ -201,8 +211,8 @@
                     @if ($purchaseConversionFactor > 1)
                         <div>
                             <label for="stock_packages" class="mb-1 block text-sm font-medium text-gray-700">{{ $purchasePresentation->unit?->name ?? 'Paquetes' }}</label>
-                            <input type="number" id="stock_packages" name="stock_packages" min="0" step="1"
-                                   value="{{ old('stock_packages', intdiv($stock, $purchaseConversionFactor)) }}"
+                            <input type="number" id="stock_packages" name="stock_packages" min="0" step="1" placeholder="Ej.: 10"
+                                   value="{{ $stockPackagesInput }}"
                                    class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                             @error('stock_packages')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -214,8 +224,8 @@
                         <label for="stock_loose" class="mb-1 block text-sm font-medium text-gray-700">
                             {{ $product->baseUnit?->name ?? 'Unidades' }}
                         </label>
-                        <input type="number" id="stock_loose" name="stock_loose" min="0" step="1"
-                               value="{{ old('stock_loose', $purchaseConversionFactor > 1 ? $stock % $purchaseConversionFactor : $stock) }}"
+                        <input type="number" id="stock_loose" name="stock_loose" min="0" step="1" placeholder="Ej.: 3"
+                               value="{{ $stockLooseInput }}"
                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                         @error('stock_loose')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -260,94 +270,119 @@
                 </a>
             </div>
         @else
-            {{-- Tabla (escritorio) --}}
-            <div class="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
-                <table class="mb-0 w-full border-collapse text-sm">
-                    <thead>
-                        <tr class="text-left text-xs uppercase tracking-wide">
-                            <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Unidad</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Factor</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Precio venta</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Costo ref.</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Ganancia</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Compra</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Venta</th>
-                            <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Código de barras</th>
-                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Estado</th>
-                            <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($product->presentations as $presentation)
-                            <tr data-href="{{ route('product-presentations.show', $presentation) }}"
-                                class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
-                                <td class="whitespace-nowrap px-4 py-3 font-medium text-gray-800">
-                                    @if ($presentation->unit)
-                                        {{ $presentation->unit->name }}
-                                        <span class="ml-1 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">{{ $presentation->unit->symbol }}</span>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->conversion_factor }}</td>
-                                <td class="px-4 py-3 tabular-nums text-gray-800">{{ $presentation->sale_price ?? '—' }}</td>
-                                <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->reference_purchase_cost ?? '—' }}</td>
-                                <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->desired_profit }}</td>
-                                <td class="px-4 py-3">
-                                    @if ($presentation->purchase_enable)
-                                        <span class="font-medium text-green-700">Sí</span>
-                                    @else
-                                        <span class="text-gray-400">No</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3">
-                                    @if ($presentation->sale_enable)
-                                        <span class="font-medium text-green-700">Sí</span>
-                                    @else
-                                        <span class="text-gray-400">No</span>
-                                    @endif
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $presentation->barcode ?? '—' }}</td>
-                                <td class="px-4 py-3">
-                                    @if ($presentation->active)
-                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activa</span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Inactiva</span>
-                                    @endif
-                                </td>
-                                <td data-href-ignore class="px-4 py-3">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
-                                        <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
+            {{-- Filtros: búsqueda libre + estado --}}
+            <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+                <div class="mb-4 flex items-center gap-2">
+                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+                        </svg>
+                    </span>
+                    <h3 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h3>
+                </div>
 
-                                        @if ($presentation->active)
-                                            <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
-                                                  onsubmit="return confirm('¿Dar de baja esta presentación? Podrás restaurarla después.')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                            </form>
-                                        @else
-                                            <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                            </form>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                {{-- Buscador (filtra en cliente) --}}
+                <div class="mb-4">
+                    <label for="presentation-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
+                    <div class="relative">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400" aria-hidden="true">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
+                        </span>
+                        <input type="search" id="presentation-filter-search" autocomplete="off"
+                               placeholder="Buscar por unidad, factor, precio o estado…"
+                               class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    {{-- Filtro por estado (píldora segmentada) --}}
+                    <div class="inline-flex items-center self-start rounded-full border border-gray-200 bg-gray-100 p-1" role="group" aria-label="Filtrar presentaciones por estado">
+                        <button type="button" data-presentation-filter="active" aria-pressed="true"
+                                class="inline-flex items-center gap-1.5 rounded-full bg-transparent px-3.5 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-white/70 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 aria-pressed:bg-white aria-pressed:text-maxxi-navy aria-pressed:shadow-sm">
+                            Activas
+                            <span class="rounded-full bg-green-100 px-1.5 text-xs font-semibold text-green-700">{{ $product->presentations->where('active', true)->count() }}</span>
+                        </button>
+                        <button type="button" data-presentation-filter="inactive" aria-pressed="false"
+                                class="inline-flex items-center gap-1.5 rounded-full bg-transparent px-3.5 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-white/70 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 aria-pressed:bg-white aria-pressed:text-maxxi-navy aria-pressed:shadow-sm">
+                            Inactivas
+                            <span class="rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-600">{{ $product->presentations->where('active', false)->count() }}</span>
+                        </button>
+                    </div>
+
+                    <button type="button" data-presentation-clear class="{{ $botones['secundario'] }} self-start sm:self-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Limpiar
+                    </button>
+                </div>
             </div>
 
-            {{-- Tarjetas (móvil) --}}
-            <div class="space-y-3 md:hidden">
-                @foreach ($product->presentations as $presentation)
-                    <div data-href="{{ route('product-presentations.show', $presentation) }}"
-                         class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
-                        <div class="flex items-start justify-between gap-3">
+            <div id="presentation-list">
+                {{-- Tabla (escritorio) --}}
+                <div class="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+                    <table class="mb-0 w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="text-left text-xs uppercase tracking-wide">
+                                <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Unidad</th>
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Factor</th>
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Precio venta</th>
+                                <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($product->presentations as $presentation)
+                                <tr data-href="{{ route('product-presentations.show', $presentation) }}"
+                                    data-presentation-item data-active="{{ $presentation->active ? '1' : '0' }}"
+                                    data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
+                                    class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
+                                    <td class="whitespace-nowrap px-4 py-3 font-medium text-gray-800">
+                                        @if ($presentation->unit)
+                                            {{ $presentation->unit->name }}
+                                            <span class="ml-1 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600">{{ $presentation->unit->symbol }}</span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->conversion_factor }}</td>
+                                    <td class="px-4 py-3 tabular-nums text-gray-800">{{ $presentation->sale_price ?? '—' }}</td>
+                                    <td data-href-ignore class="px-4 py-3">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
+                                            <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
+
+                                            @if ($presentation->active)
+                                                <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
+                                                      data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
+                                                      data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Tarjetas (móvil) --}}
+                <div class="space-y-3 md:hidden">
+                    @foreach ($product->presentations as $presentation)
+                        <div data-href="{{ route('product-presentations.show', $presentation) }}"
+                             data-presentation-item data-active="{{ $presentation->active ? '1' : '0' }}"
+                             data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
+                             class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
                             <div>
                                 <p class="mb-0 font-semibold text-gray-800">
                                     @if ($presentation->unit)
@@ -358,50 +393,39 @@
                                 </p>
                                 <p class="mb-0 mt-0.5 text-sm text-gray-500">Factor: <span class="font-medium text-gray-800">{{ $presentation->conversion_factor }}</span></p>
                                 <p class="mb-0 mt-0.5 text-sm text-gray-500">Precio venta: <span class="font-medium text-gray-800">{{ $presentation->sale_price ?? '—' }}</span></p>
-                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Costo ref.: <span class="text-gray-800">{{ $presentation->reference_purchase_cost ?? '—' }}</span></p>
-                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Ganancia: <span class="text-gray-800">{{ $presentation->desired_profit }}</span></p>
-                                @if ($presentation->barcode)
-                                    <p class="mb-0 mt-0.5 text-sm text-gray-500">Código: <span class="text-gray-800">{{ $presentation->barcode }}</span></p>
-                                @endif
                             </div>
 
-                            @if ($presentation->active)
-                                <span class="inline-flex shrink-0 items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activa</span>
-                            @else
-                                <span class="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Inactiva</span>
-                            @endif
-                        </div>
+                            <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
+                                <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
+                                <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
 
-                        <div class="mt-2 flex flex-wrap gap-1.5">
-                            @if ($presentation->purchase_enable)
-                                <span class="inline-flex items-center rounded-md bg-maxxi-navy/10 px-2 py-0.5 text-xs font-medium text-maxxi-navy">Compra</span>
-                            @endif
-                            @if ($presentation->sale_enable)
-                                <span class="inline-flex items-center rounded-md bg-maxxi-orange/10 px-2 py-0.5 text-xs font-medium text-maxxi-orange-dark">Venta</span>
-                            @endif
+                                @if ($presentation->active)
+                                    <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
+                                          data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
+                                          data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
+                    @endforeach
+                </div>
+            </div>
 
-                        <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
-                            <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
-                            <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
-
-                            @if ($presentation->active)
-                                <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
-                                      onsubmit="return confirm('¿Dar de baja esta presentación? Podrás restaurarla después.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                </form>
-                            @else
-                                <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                </form>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
+            {{-- Sin resultados para el filtro --}}
+            <div id="presentation-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <p class="mb-0 mt-3 text-sm text-gray-500">No hay presentaciones que coincidan con los filtros.</p>
             </div>
         @endif
     </div>
@@ -420,5 +444,176 @@
             stockToggle.addEventListener('click', () => setOpen(stockForm.hidden));
             stockCancel?.addEventListener('click', () => setOpen(false));
         }
+    </script>
+
+    {{-- Modales: confirmar baja y reactivación de presentaciones --}}
+    <x-modal name="confirm-presentation-deactivate" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Dar de baja esta presentación?</h2>
+                    <p id="confirm-presentation-deactivate-summary" class="mb-0 text-sm text-gray-600"></p>
+                    <p class="mb-0 mt-1 text-sm text-gray-500">Dejará de estar disponible, pero podrás restaurarla después.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-presentation-deactivate')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-presentation-deactivate-button" class="{{ $botones['peligro-solido'] }}">
+                    Sí, dar de baja
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    <x-modal name="confirm-presentation-restore" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Reactivar esta presentación?</h2>
+                    <p id="confirm-presentation-restore-summary" class="mb-0 text-sm text-gray-600"></p>
+                    <p class="mb-0 mt-1 text-sm text-gray-500">Volverá a estar disponible en el sistema.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-presentation-restore')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-presentation-restore-button" class="{{ $botones['exito-solido'] }}">
+                    Sí, reactivar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    <script>
+        const presentationFilterButtons = document.querySelectorAll('[data-presentation-filter]');
+        const presentationItems = document.querySelectorAll('[data-presentation-item]');
+        const presentationList = document.getElementById('presentation-list');
+        const presentationFilterEmpty = document.getElementById('presentation-filter-empty');
+        const presentationSearchInput = document.getElementById('presentation-filter-search');
+        const presentationClearButton = document.querySelector('[data-presentation-clear]');
+
+        // Estado seleccionado en la píldora; por defecto, activas.
+        let presentationActiveFilter = 'active';
+
+        const applyPresentationFilter = () => {
+            const query = (presentationSearchInput?.value || '').trim().toLowerCase();
+            let visible = 0;
+
+            presentationItems.forEach((item) => {
+                const isActive = item.dataset.active === '1';
+                const matchesState = presentationActiveFilter === 'active' ? isActive : !isActive;
+
+                let matchesSearch = true;
+                if (query && !(item.dataset.search || '').toLowerCase().includes(query)) {
+                    matchesSearch = false;
+                }
+
+                // Un ítem se muestra solo si cumple el estado Y la búsqueda.
+                const show = matchesState && matchesSearch;
+                item.classList.toggle('hidden', !show);
+                if (show) {
+                    visible++;
+                }
+            });
+
+            // Oculta la lista completa (tabla + tarjetas) si el filtro no arroja resultados.
+            presentationList?.classList.toggle('hidden', visible === 0);
+            presentationFilterEmpty?.classList.toggle('hidden', visible > 0);
+
+            presentationFilterButtons.forEach((button) => {
+                button.setAttribute('aria-pressed', button.dataset.presentationFilter === presentationActiveFilter ? 'true' : 'false');
+            });
+        };
+
+        presentationFilterButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                presentationActiveFilter = button.dataset.presentationFilter;
+                applyPresentationFilter();
+            });
+        });
+
+        presentationSearchInput?.addEventListener('input', applyPresentationFilter);
+
+        presentationClearButton?.addEventListener('click', () => {
+            if (presentationSearchInput) {
+                presentationSearchInput.value = '';
+            }
+            presentationActiveFilter = 'active';
+            applyPresentationFilter();
+        });
+
+        applyPresentationFilter();
+    </script>
+
+    {{-- Confirmación de baja/reactivación de presentaciones --}}
+    <script>
+        (function () {
+            var actionForms = document.querySelectorAll('[data-presentation-action]');
+            var deactivateSummary = document.getElementById('confirm-presentation-deactivate-summary');
+            var restoreSummary = document.getElementById('confirm-presentation-restore-summary');
+            var deactivateButton = document.getElementById('confirm-presentation-deactivate-button');
+            var restoreButton = document.getElementById('confirm-presentation-restore-button');
+            var pendingForm = null;
+            var bypassConfirm = false;
+
+            actionForms.forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (bypassConfirm) { return; }
+
+                    event.preventDefault();
+                    pendingForm = form;
+
+                    var name = form.dataset.presentationName || '';
+                    var suffix = name ? ' «' + name + '»' : '';
+
+                    if (form.dataset.presentationAction === 'deactivate') {
+                        if (deactivateSummary) {
+                            deactivateSummary.textContent = 'Se dará de baja la presentación' + suffix + '.';
+                        }
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-presentation-deactivate' }));
+                    } else {
+                        if (restoreSummary) {
+                            restoreSummary.textContent = 'Se reactivará la presentación' + suffix + '.';
+                        }
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-presentation-restore' }));
+                    }
+                });
+            });
+
+            function submitPending(modalName) {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: modalName }));
+
+                if (!pendingForm) { return; }
+
+                bypassConfirm = true;
+
+                if (typeof pendingForm.requestSubmit === 'function') {
+                    pendingForm.requestSubmit();
+                } else {
+                    pendingForm.submit();
+                }
+
+                bypassConfirm = false;
+                pendingForm = null;
+            }
+
+            deactivateButton?.addEventListener('click', function () { submitPending('confirm-presentation-deactivate'); });
+            restoreButton?.addEventListener('click', function () { submitPending('confirm-presentation-restore'); });
+        })();
     </script>
 </x-layouts.sistema>

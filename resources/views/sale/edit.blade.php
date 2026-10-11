@@ -21,13 +21,13 @@
         @method('PUT')
 
         <p>
-            <label for="customer_name">Cliente</label>
-            <input type="text" id="customer_name" name="customer_name" value="{{ old('customer_name', $sale->customer_name) }}" maxlength="20" required>
+            <label for="customer_name">Cliente (opcional)</label>
+            <input type="text" id="customer_name" name="customer_name" value="{{ old('customer_name', $sale->customer_name) }}" maxlength="20">
         </p>
 
         <p>
-            <label for="customer_phone">Teléfono</label>
-            <input type="text" id="customer_phone" name="customer_phone" value="{{ old('customer_phone', $sale->customer_phone) }}" maxlength="10" required>
+            <label for="customer_phone">Teléfono (opcional)</label>
+            <input type="text" id="customer_phone" name="customer_phone" value="{{ old('customer_phone', $sale->customer_phone) }}" maxlength="10">
         </p>
 
         <p>
@@ -36,23 +36,7 @@
         </p>
 
         <p>
-            <label for="status">Estado</label>
-            <select id="status" name="status" required>
-                <option value="pagada" @selected(old('status', $sale->status) === 'pagada')>Pagada</option>
-                <option value="fiada" @selected(old('status', $sale->status) === 'fiada')>Fiada</option>
-            </select>
-        </p>
-
-        <p>
-            <label for="user_id">Usuario (cajero)</label>
-            <select id="user_id" name="user_id" required>
-                <option value="">-- Seleccionar --</option>
-                @foreach ($users as $user)
-                    <option value="{{ $user->id }}" @selected(old('user_id', $sale->user_id) == $user->id)>
-                        {{ $user->name }} ({{ $user->email }})
-                    </option>
-                @endforeach
-            </select>
+            <small>El estado (pagada/fiada) y el cajero se determinan automáticamente al guardar.</small>
         </p>
 
         <p>

@@ -18,13 +18,18 @@ return new class extends Migration
             $table->foreignId('presentation_id')->constrained('product_presentations');
             $table->integer('quantity');
             $table->integer('conversion_factor');
-            $table->boolean('sale_enable');
+            $table->integer('base_quantity');
+            $table->decimal('unit_price', 10, 1);
+            $table->decimal('base_unit_cost_at_sale', 10, 2);
             $table->decimal('subtotal', 10, 1);
             $table->timestamps();
         });
 
         DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_quantity_check CHECK (quantity >= 0)');
         DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_conversion_factor_check CHECK (conversion_factor >= 0)');
+        DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_base_quantity_check CHECK (base_quantity >= 0)');
+        DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_unit_price_check CHECK (unit_price >= 0)');
+        DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_base_unit_cost_at_sale_check CHECK (base_unit_cost_at_sale >= 0)');
         DB::statement('ALTER TABLE sale_details ADD CONSTRAINT sale_details_subtotal_check CHECK (subtotal >= 0)');
     }
 

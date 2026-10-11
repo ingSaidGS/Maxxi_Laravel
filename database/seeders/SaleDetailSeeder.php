@@ -25,7 +25,11 @@ class SaleDetailSeeder extends Seeder
         ];
 
         foreach ($details as $detail) {
-            $presentation = ProductPresentation::where('barcode', $detail['barcode'])->firstOrFail();
+            $presentation = ProductPresentation::with('product')->where('barcode', $detail['barcode'])->firstOrFail();
+
+            $quantity = (int) $detail['quantity'];
+            $conversionFactor = (int) $presentation->conversion_factor;
+            $unitPrice = (float) $presentation->sale_price;
 
             SaleDetail::updateOrCreate(
                 [
@@ -33,10 +37,12 @@ class SaleDetailSeeder extends Seeder
                     'presentation_id' => $presentation->id,
                 ],
                 [
-                    'quantity' => $detail['quantity'],
-                    'conversion_factor' => $presentation->conversion_factor,
-                    'sale_enable' => $presentation->sale_enable,
-                    'subtotal' => round($detail['quantity'] * (float) $presentation->sale_price, 1),
+                    'quantity' => $quantity,
+                    'conversion_factor' => $conversionFactor,
+                    'base_quantity' => $conversionFactor * $quantity,
+                    'unit_price' => round($unitPrice, 1),
+                    'base_unit_cost_at_sale' => round((float) ($presentation->product?->base_unit_cost ?? 0), 2),
+                    'subtotal' => round($quantity * $unitPrice, 1),
                 ],
             );
         }

@@ -17,7 +17,9 @@ class SaleDetail extends Model
         'presentation_id',
         'quantity',
         'conversion_factor',
-        'sale_enable',
+        'base_quantity',
+        'unit_price',
+        'base_unit_cost_at_sale',
         'subtotal',
     ];
 
@@ -29,7 +31,9 @@ class SaleDetail extends Model
     protected function casts(): array
     {
         return [
-            'sale_enable' => 'boolean',
+            'base_quantity' => 'integer',
+            'unit_price' => 'decimal:1',
+            'base_unit_cost_at_sale' => 'decimal:2',
             'subtotal' => 'decimal:1',
         ];
     }

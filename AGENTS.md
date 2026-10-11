@@ -75,7 +75,7 @@ Unit ──< Product ──< ProductPresentation ──< SaleDetail >── Sale
 - **products:** `id`, `name` varchar(20), `base_unit_id` FK→units, `reference_purchase_cost` decimal(10,2), `active` boolean (default true), timestamps. CHECK `reference_purchase_cost >= 0`.
 - **product_presentations:** `id`, `product_id` FK→products, `unit_id` FK→units, `conversion_factor` int, `sale_price` decimal(10,1), `purchase_enable` bool, `sale_enable` bool, `barcode` varchar(20) **nullable**, `active` bool (default true), timestamps. CHECK `conversion_factor >= 0` y `sale_price >= 0`.
 - **sales:** `id`, `customer_name` varchar(20), `customer_phone` varchar(10), `sold_at` datetime, `total` decimal(10,1), `status` enum(`pagada`,`fiada`), `user_id` FK→users, `sale_discount` decimal(10,1), `cash` decimal(10,1), `qr` decimal(10,1), `debt` decimal(10,1), timestamps. CHECK `>= 0` en `total`, `sale_discount`, `cash`, `qr`, `debt`.
-- **sale_details:** `id`, `sale_id` FK→sales, `presentation_id` FK→product_presentations, `quantity` int, `conversion_factor` int, `sale_enable` bool, `subtotal` decimal(10,1), timestamps. CHECK `>= 0` en `quantity`, `conversion_factor`, `subtotal`.
+- **sale_details:** `id`, `sale_id` FK→sales, `presentation_id` FK→product_presentations, `quantity` int, `conversion_factor` int, `base_quantity` int, `unit_price` decimal(10,1), `base_unit_cost_at_sale` decimal(10,2), `subtotal` decimal(10,1), timestamps. CHECK `>= 0` en `quantity`, `conversion_factor`, `base_quantity`, `unit_price`, `base_unit_cost_at_sale`, `subtotal`.
 
 > Nota: `sales.status` en el código se llama `status` (no `estatus`). Valores válidos: `pagada`, `fiada`.
 

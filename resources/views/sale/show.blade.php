@@ -62,7 +62,6 @@
                     <th>Unidad</th>
                     <th>Cantidad</th>
                     <th>Factor</th>
-                    <th>Vendible</th>
                     <th>Subtotal</th>
                 </tr>
             </thead>
@@ -73,7 +72,6 @@
                         <td>{{ $detail->presentation?->unit?->name ?? '—' }}</td>
                         <td>{{ $detail->quantity }}</td>
                         <td>{{ $detail->conversion_factor }}</td>
-                        <td>{{ $detail->sale_enable ? 'Sí' : 'No' }}</td>
                         <td>{{ $detail->subtotal }}</td>
                     </tr>
                 @endforeach

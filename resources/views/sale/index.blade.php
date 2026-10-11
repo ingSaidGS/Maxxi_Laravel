@@ -1,11 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ventas</title>
-</head>
-<body>
+<x-layouts.sistema title="Ventas">
     <h1>Ventas</h1>
 
     @if (session('status'))
@@ -51,5 +44,4 @@
             @endforelse
         </tbody>
     </table>
-</body>
-</html>
+</x-layouts.sistema>

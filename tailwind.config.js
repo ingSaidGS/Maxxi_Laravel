@@ -11,6 +11,17 @@ export default {
 
     theme: {
         extend: {
+            colors: {
+                maxxi: {
+                    navy: '#1A2E45',
+                    'navy-dark': '#14233A',
+                    'navy-light': '#25405C',
+                    orange: '#F87613',
+                    'orange-dark': '#D36B15',
+                    slate: '#485767',
+                    cream: '#FFFAE8',
+                },
+            },
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },

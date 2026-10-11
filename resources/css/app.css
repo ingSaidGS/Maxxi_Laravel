@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Evita el destello de elementos controlados con Alpine antes de inicializar. */
+[x-cloak] {
+    display: none !important;
+}
+
+/*
+ * Estilos base para las vistas de recursos migradas al layout del sistema.
+ * Tailwind (preflight) reinicia los estilos por defecto del navegador; aquí
+ * restauramos una presentación legible para tablas, formularios y listas que
+ * todavía se escriben con HTML clásico.
+ */
+@layer base {
+    .contenido h1 {
+        @apply mb-4 text-2xl font-semibold text-gray-800;
+    }
+
+    .contenido h2 {
+        @apply mb-3 text-xl font-semibold text-gray-800;
+    }
+
+    .contenido p {
+        @apply mb-3;
+    }
+
+    .contenido ul {
+        @apply mb-3 list-disc pl-6;
+    }
+
+    .contenido dl {
+        @apply mb-4;
+    }
+
+    .contenido dt {
+        @apply mt-3 font-semibold text-gray-700;
+    }
+
+    .contenido dd {
+        @apply text-gray-800;
+    }
+
+    .contenido table {
+        @apply mb-4 w-full border-collapse text-sm;
+    }
+
+    .contenido th,
+    .contenido td {
+        @apply border border-gray-300 px-3 py-2 text-left align-top;
+    }
+
+    .contenido th {
+        @apply bg-gray-100 font-semibold text-gray-700;
+    }
+
+    .contenido a {
+        @apply text-maxxi-orange hover:underline;
+    }
+
+    .contenido label {
+        @apply mb-1 block font-medium text-gray-700;
+    }
+
+    .contenido button {
+        @apply rounded-md bg-maxxi-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-maxxi-orange focus:outline-none focus:ring-2 focus:ring-maxxi-orange;
+    }
+}

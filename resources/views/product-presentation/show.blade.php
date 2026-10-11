@@ -1,11 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalle de presentación</title>
-</head>
-<body>
+<x-layouts.sistema title="Detalle de presentación">
     <h1>Presentación #{{ $presentation->id }}</h1>
 
     @if (session('status'))
@@ -60,5 +53,4 @@
         <a href="{{ route('product-presentations.edit', $presentation) }}">Editar</a>
         <a href="{{ route('products.show', $presentation->product_id) }}">Volver al producto</a>
     </p>
-</body>
-</html>
+</x-layouts.sistema>

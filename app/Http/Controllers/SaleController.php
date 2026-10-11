@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SaleController extends Controller
@@ -57,6 +58,8 @@ class SaleController extends Controller
      * El total se calcula como (suma de subtotales - descuento). El estado y el
      * cajero se derivan: "pagada" si efectivo + QR es mayor o igual al total,
      * "fiada" en caso contrario; el usuario se toma de la sesión autenticada.
+     * Cuando la venta queda "fiada", el nombre y el teléfono del cliente son
+     * obligatorios y la deuda (fio) se calcula como total - (efectivo + QR).
      *
      * La venta y el descuento de stock se ejecutan en una única transacción: si
      * algún producto no tiene stock suficiente, no se registra nada.
@@ -66,29 +69,30 @@ class SaleController extends Controller
         $validated = $request->validate($this->rules());
         $details = $this->validatedDetails($request);
 
-        $sale = DB::transaction(function () use ($validated, $details, $request) {
-            $subtotals = 0.0;
-            $requirements = [];
+        $subtotals = 0.0;
+        $requirements = [];
 
-            foreach ($details as $detail) {
-                $presentation = $detail['presentation'];
-                $quantity = (int) $detail['quantity'];
+        foreach ($details as $detail) {
+            $presentation = $detail['presentation'];
+            $quantity = (int) $detail['quantity'];
 
-                $subtotals += $quantity * (float) $presentation->sale_price;
+            $subtotals += $quantity * (float) $presentation->sale_price;
 
-                $requirements[] = [
-                    'product_id' => (int) $presentation->product_id,
-                    'base_quantity' => (int) $presentation->conversion_factor * $quantity,
-                ];
-            }
+            $requirements[] = [
+                'product_id' => (int) $presentation->product_id,
+                'base_quantity' => (int) $presentation->conversion_factor * $quantity,
+            ];
+        }
 
-            $total = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
-            $paid = round((float) $validated['cash'] + (float) $validated['qr'], 1);
+        $amounts = $this->resolveAmounts($subtotals, $validated);
+        $this->ensureCustomerForFiada($amounts['status'], $validated);
 
-            $validated['total'] = $total;
-            $validated['status'] = $this->resolveStatus($paid, $total);
-            $validated['user_id'] = $request->user()->id;
+        $validated['total'] = $amounts['total'];
+        $validated['status'] = $amounts['status'];
+        $validated['debt'] = $amounts['debt'];
+        $validated['user_id'] = $request->user()->id;
 
+        $sale = DB::transaction(function () use ($validated, $details, $requirements) {
             $sale = Sale::create($validated);
 
             foreach ($details as $detail) {
@@ -104,7 +108,7 @@ class SaleController extends Controller
 
         return redirect()
             ->route('sales.show', $sale)
-            ->with('status', 'Venta registrada correctamente.');
+            ->with('status', $this->saleStatusMessage('registrada', $amounts['status'], $amounts['debt']));
     }
 
     /**
@@ -122,30 +126,35 @@ class SaleController extends Controller
      */
     public function edit(Sale $sale): View
     {
-        return view('sale.edit', compact('sale'));
+        $subtotals = (float) $sale->saleDetails()->sum('subtotal');
+
+        return view('sale.edit', compact('sale', 'subtotals'));
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * El total se recalcula a partir de los detalles existentes.
+     * El total se recalcula a partir de los detalles existentes y, al igual que
+     * en el alta, el estado y la deuda (fio) se derivan; si queda "fiada" el
+     * nombre y el teléfono del cliente son obligatorios.
      */
     public function update(Request $request, Sale $sale): RedirectResponse
     {
         $validated = $request->validate($this->rules());
 
         $subtotals = (float) $sale->saleDetails()->sum('subtotal');
-        $total = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
-        $paid = round((float) $validated['cash'] + (float) $validated['qr'], 1);
+        $amounts = $this->resolveAmounts($subtotals, $validated);
+        $this->ensureCustomerForFiada($amounts['status'], $validated);
 
-        $validated['total'] = $total;
-        $validated['status'] = $this->resolveStatus($paid, $total);
+        $validated['total'] = $amounts['total'];
+        $validated['status'] = $amounts['status'];
+        $validated['debt'] = $amounts['debt'];
 
         $sale->update($validated);
 
         return redirect()
             ->route('sales.show', $sale)
-            ->with('status', 'Venta actualizada correctamente.');
+            ->with('status', $this->saleStatusMessage('actualizada', $amounts['status'], $amounts['debt']));
     }
 
     /**
@@ -164,7 +173,9 @@ class SaleController extends Controller
     /**
      * Reglas de validación según las columnas de "sales".
      *
-     * "total" no se valida aquí: se calcula en el servidor.
+     * "total" y "debt" no se validan aquí: se calculan en el servidor. El nombre
+     * y el teléfono del cliente son opcionales; se exigen solo si la venta queda
+     * "fiada" (ver ensureCustomerForFiada()).
      *
      * @return array<string, array<int, string>>
      */
@@ -179,8 +190,71 @@ class SaleController extends Controller
             'sale_discount' => $money,
             'cash' => $money,
             'qr' => $money,
-            'debt' => $money,
         ];
+    }
+
+    /**
+     * Deriva los importes de la venta a partir de los subtotales.
+     *
+     * "total" = subtotales - descuento; el estado se resuelve contra el monto
+     * pagado (efectivo + QR) y la deuda "fiada" es lo que queda por pagar. En
+     * ventas "pagada" la deuda siempre es cero.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{total: float, paid: float, status: string, debt: float}
+     */
+    protected function resolveAmounts(float $subtotals, array $data): array
+    {
+        $total = round(max(0, $subtotals - (float) $data['sale_discount']), 1);
+        $paid = round((float) $data['cash'] + (float) $data['qr'], 1);
+        $status = $this->resolveStatus($paid, $total);
+
+        return [
+            'total' => $total,
+            'paid' => $paid,
+            'status' => $status,
+            'debt' => $status === 'fiada' ? round(max(0, $total - $paid), 1) : 0.0,
+        ];
+    }
+
+    /**
+     * Exige nombre y teléfono del cliente cuando la venta queda "fiada".
+     *
+     * @param  array<string, mixed>  $data
+     *
+     * @throws ValidationException
+     */
+    protected function ensureCustomerForFiada(string $status, array $data): void
+    {
+        if ($status !== 'fiada') {
+            return;
+        }
+
+        $errors = [];
+
+        if (blank($data['customer_name'] ?? null)) {
+            $errors['customer_name'] = 'El nombre del cliente es obligatorio cuando la venta queda fiada.';
+        }
+
+        if (blank($data['customer_phone'] ?? null)) {
+            $errors['customer_phone'] = 'El teléfono del cliente es obligatorio cuando la venta queda fiada.';
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Mensaje de confirmación indicando el estado y, si aplica, el monto fiao.
+     */
+    protected function saleStatusMessage(string $verb, string $status, float $debt): string
+    {
+        if ($status === 'fiada') {
+            return "Venta {$verb} como FIADA. Fio: ".number_format($debt, 1).'.';
+        }
+
+        return "Venta {$verb} correctamente.";
     }
 
     /**

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductPresentation;
 use App\Models\Sale;
-use App\Models\User;
+use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,6 +14,8 @@ use Illuminate\View\View;
 
 class SaleController extends Controller
 {
+    public function __construct(private readonly StockService $stock) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -31,8 +33,6 @@ class SaleController extends Controller
      */
     public function create(): View
     {
-        $users = User::orderBy('name')->get();
-
         $presentations = ProductPresentation::with(['product', 'unit'])
             ->where('sale_enable', true)
             ->where('active', true)
@@ -48,41 +48,56 @@ class SaleController extends Controller
             ])
             ->values();
 
-        return view('sale.create', compact('users', 'presentations'));
+        return view('sale.create', compact('presentations'));
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * El total se calcula como (suma de subtotales - descuento).
+     * El total se calcula como (suma de subtotales - descuento). El estado y el
+     * cajero se derivan: "pagada" si efectivo + QR es mayor o igual al total,
+     * "fiada" en caso contrario; el usuario se toma de la sesión autenticada.
+     *
+     * La venta y el descuento de stock se ejecutan en una única transacción: si
+     * algún producto no tiene stock suficiente, no se registra nada.
      */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate($this->rules());
         $details = $this->validatedDetails($request);
 
-        $sale = DB::transaction(function () use ($validated, $details) {
+        $sale = DB::transaction(function () use ($validated, $details, $request) {
             $subtotals = 0.0;
+            $requirements = [];
 
             foreach ($details as $detail) {
-                $subtotals += $detail['quantity'] * (float) $detail['presentation']->sale_price;
+                $presentation = $detail['presentation'];
+                $quantity = (int) $detail['quantity'];
+
+                $subtotals += $quantity * (float) $presentation->sale_price;
+
+                $requirements[] = [
+                    'product_id' => (int) $presentation->product_id,
+                    'base_quantity' => (int) $presentation->conversion_factor * $quantity,
+                ];
             }
 
-            $validated['total'] = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
+            $total = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
+            $paid = round((float) $validated['cash'] + (float) $validated['qr'], 1);
+
+            $validated['total'] = $total;
+            $validated['status'] = $this->resolveStatus($paid, $total);
+            $validated['user_id'] = $request->user()->id;
 
             $sale = Sale::create($validated);
 
             foreach ($details as $detail) {
-                $presentation = $detail['presentation'];
-
-                $sale->saleDetails()->create([
-                    'presentation_id' => $presentation->id,
-                    'quantity' => $detail['quantity'],
-                    'conversion_factor' => $presentation->conversion_factor,
-                    'sale_enable' => $presentation->sale_enable,
-                    'subtotal' => round($detail['quantity'] * (float) $presentation->sale_price, 1),
-                ]);
+                $sale->saleDetails()->create(
+                    $this->saleDetailAttributes($detail['presentation'], (int) $detail['quantity'])
+                );
             }
+
+            $this->stock->decrementForSale($requirements);
 
             return $sale;
         });
@@ -107,9 +122,7 @@ class SaleController extends Controller
      */
     public function edit(Sale $sale): View
     {
-        $users = User::orderBy('name')->get();
-
-        return view('sale.edit', compact('sale', 'users'));
+        return view('sale.edit', compact('sale'));
     }
 
     /**
@@ -122,7 +135,11 @@ class SaleController extends Controller
         $validated = $request->validate($this->rules());
 
         $subtotals = (float) $sale->saleDetails()->sum('subtotal');
-        $validated['total'] = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
+        $total = round(max(0, $subtotals - (float) $validated['sale_discount']), 1);
+        $paid = round((float) $validated['cash'] + (float) $validated['qr'], 1);
+
+        $validated['total'] = $total;
+        $validated['status'] = $this->resolveStatus($paid, $total);
 
         $sale->update($validated);
 
@@ -156,15 +173,47 @@ class SaleController extends Controller
         $money = ['required', 'numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'];
 
         return [
-            'customer_name' => ['required', 'string', 'max:20'],
-            'customer_phone' => ['required', 'string', 'max:10'],
+            'customer_name' => ['nullable', 'string', 'max:20'],
+            'customer_phone' => ['nullable', 'string', 'max:10'],
             'sold_at' => ['required', 'date'],
-            'status' => ['required', 'in:pagada,fiada'],
-            'user_id' => ['required', 'integer', 'exists:users,id'],
             'sale_discount' => $money,
             'cash' => $money,
             'qr' => $money,
             'debt' => $money,
+        ];
+    }
+
+    /**
+     * Determina el estado de la venta según el monto cubierto.
+     *
+     * "pagada" cuando efectivo + QR es mayor o igual al total (el "total" ya
+     * tiene descontado el "sale_discount"); "fiada" en caso contrario. La
+     * tolerancia de 0.05 evita falsos negativos por redondeo de punto flotante
+     * (los importes se manejan con un decimal).
+     */
+    protected function resolveStatus(float $paid, float $total): string
+    {
+        return $paid >= $total - 0.05 ? 'pagada' : 'fiada';
+    }
+
+    /**
+     * Atributos de un detalle de venta derivados de la presentación vendida.
+     *
+     * @return array<string, mixed>
+     */
+    protected function saleDetailAttributes(ProductPresentation $presentation, int $quantity): array
+    {
+        $conversionFactor = (int) $presentation->conversion_factor;
+        $unitPrice = (float) $presentation->sale_price;
+
+        return [
+            'presentation_id' => $presentation->id,
+            'quantity' => $quantity,
+            'conversion_factor' => $conversionFactor,
+            'base_quantity' => $conversionFactor * $quantity,
+            'unit_price' => round($unitPrice, 1),
+            'base_unit_cost_at_sale' => round((float) ($presentation->product?->base_unit_cost ?? 0), 2),
+            'subtotal' => round($quantity * $unitPrice, 1),
         ];
     }
 
@@ -187,7 +236,8 @@ class SaleController extends Controller
             'details.*.quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        $presentations = ProductPresentation::whereIn('id', collect($validated['details'])->pluck('presentation_id'))
+        $presentations = ProductPresentation::with('product')
+            ->whereIn('id', collect($validated['details'])->pluck('presentation_id'))
             ->get()
             ->keyBy('id');
 

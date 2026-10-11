@@ -14,8 +14,8 @@ return new class extends Migration
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_name', 20);
-            $table->string('customer_phone', 10);
+            $table->string('customer_name', 20)->nullable();
+            $table->string('customer_phone', 10)->nullable();
             $table->dateTime('sold_at');
             $table->decimal('total', 10, 1);
             $table->enum('status', ['pagada', 'fiada']);

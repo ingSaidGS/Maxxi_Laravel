@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProductPresentation;
 use App\Models\SaleDetail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,20 +30,24 @@ class SaleDetailController extends Controller
             'sale_id' => null,
             'presentation_id' => null,
             'quantity' => 1,
-            'conversion_factor' => 1,
-            'sale_enable' => true,
-            'subtotal' => 0,
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
+     *
+     * Los importes del detalle se derivan de la presentación vendida.
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate($this->rules());
 
-        $saleDetail = SaleDetail::create($validated);
+        $presentation = ProductPresentation::with('product')->findOrFail($validated['presentation_id']);
+
+        $saleDetail = SaleDetail::create([
+            'sale_id' => $validated['sale_id'],
+            ...$this->detailAttributes($presentation, (int) $validated['quantity']),
+        ]);
 
         return response()->json($saleDetail, 201);
     }
@@ -72,7 +77,12 @@ class SaleDetailController extends Controller
     {
         $validated = $request->validate($this->rules());
 
-        $saleDetail->update($validated);
+        $presentation = ProductPresentation::with('product')->findOrFail($validated['presentation_id']);
+
+        $saleDetail->update([
+            'sale_id' => $validated['sale_id'],
+            ...$this->detailAttributes($presentation, (int) $validated['quantity']),
+        ]);
 
         return response()->json($saleDetail);
     }
@@ -100,10 +110,28 @@ class SaleDetailController extends Controller
         return [
             'sale_id' => ['required', 'integer', 'exists:sales,id'],
             'presentation_id' => ['required', 'integer', 'exists:product_presentations,id'],
-            'quantity' => ['required', 'integer', 'min:0'],
-            'conversion_factor' => ['required', 'integer', 'min:0'],
-            'sale_enable' => ['boolean'],
-            'subtotal' => ['required', 'numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ];
+    }
+
+    /**
+     * Atributos del detalle derivados de la presentación vendida.
+     *
+     * @return array<string, mixed>
+     */
+    protected function detailAttributes(ProductPresentation $presentation, int $quantity): array
+    {
+        $conversionFactor = (int) $presentation->conversion_factor;
+        $unitPrice = (float) $presentation->sale_price;
+
+        return [
+            'presentation_id' => $presentation->id,
+            'quantity' => $quantity,
+            'conversion_factor' => $conversionFactor,
+            'base_quantity' => $conversionFactor * $quantity,
+            'unit_price' => round($unitPrice, 1),
+            'base_unit_cost_at_sale' => round((float) ($presentation->product?->base_unit_cost ?? 0), 2),
+            'subtotal' => round($quantity * $unitPrice, 1),
         ];
     }
 }

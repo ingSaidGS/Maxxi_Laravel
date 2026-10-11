@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UnitController extends Controller
@@ -33,8 +34,8 @@ class UnitController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:10'],
-            'symbol' => ['required', 'string', 'max:3'],
+            'name' => ['required', 'string', 'max:10', 'unique:units,name'],
+            'symbol' => ['required', 'string', 'max:3', 'unique:units,symbol'],
             'active' => ['boolean'],
         ]);
 
@@ -67,8 +68,8 @@ class UnitController extends Controller
     public function update(Request $request, Unit $unit): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:10'],
-            'symbol' => ['required', 'string', 'max:3'],
+            'name' => ['required', 'string', 'max:10', Rule::unique('units', 'name')->ignore($unit->id)],
+            'symbol' => ['required', 'string', 'max:3', Rule::unique('units', 'symbol')->ignore($unit->id)],
             'active' => ['boolean'],
         ]);
 

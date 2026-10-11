@@ -1,11 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva venta</title>
-</head>
-<body>
+<x-layouts.sistema title="Nueva venta">
     <h1>Nueva venta</h1>
 
     @if ($errors->any())
@@ -20,12 +13,12 @@
         @csrf
 
         <p>
-            <label for="customer_name">Cliente (opcional)</label>
+            <label for="customer_name">Cliente (obligatorio si la venta queda fiada)</label>
             <input type="text" id="customer_name" name="customer_name" value="{{ old('customer_name') }}" maxlength="20">
         </p>
 
         <p>
-            <label for="customer_phone">Teléfono (opcional)</label>
+            <label for="customer_phone">Teléfono (obligatorio si la venta queda fiada)</label>
             <input type="text" id="customer_phone" name="customer_phone" value="{{ old('customer_phone') }}" maxlength="10">
         </p>
 
@@ -87,12 +80,17 @@
         </p>
 
         <p>
-            <label for="debt">Fiado (deuda)</label>
-            <input type="number" id="debt" name="debt" value="{{ old('debt', 0) }}" step="0.1" min="0" required>
+            <strong>Total: <span id="total-display">0.0</span></strong>
         </p>
 
         <p>
-            <strong>Total: <span id="total-display">0.0</span></strong>
+            <strong>Estado: <span id="status-display">pagada</span></strong>
+            <small>Si efectivo + QR es menor que el total, se marca como FIADA.</small>
+        </p>
+
+        <p>
+            <strong>Fio (deuda): <span id="debt-display">0.0</span></strong>
+            <small>Se calcula como total - (efectivo + QR).</small>
         </p>
 
         <p>
@@ -125,12 +123,37 @@
             var discountInput = document.getElementById('sale_discount');
             var addButton = document.getElementById('add-item');
 
+            var form = document.getElementById('sale-form');
+            var cashInput = document.getElementById('cash');
+            var qrInput = document.getElementById('qr');
+            var nameInput = document.getElementById('customer_name');
+            var phoneInput = document.getElementById('customer_phone');
+            var debtDisplay = document.getElementById('debt-display');
+            var statusDisplay = document.getElementById('status-display');
+
             function money(n) {
                 return (Math.round(n * 10) / 10).toFixed(1);
             }
 
             function subtotalOf(item) {
                 return item.quantity * byId[item.presentation_id].price;
+            }
+
+            function computeAmounts() {
+                var subtotals = cart.reduce(function (acc, item) {
+                    return acc + subtotalOf(item);
+                }, 0);
+
+                var total = Math.round(Math.max(0, subtotals - (parseFloat(discountInput.value) || 0)) * 10) / 10;
+                var paid = (parseFloat(cashInput.value) || 0) + (parseFloat(qrInput.value) || 0);
+                var fiada = paid < total - 0.05;
+
+                return {
+                    total: total,
+                    paid: paid,
+                    fiada: fiada,
+                    debt: fiada ? Math.max(0, total - paid) : 0,
+                };
             }
 
             function render() {
@@ -193,13 +216,14 @@
                     hidden.appendChild(hiddenQty);
                 });
 
-                var subtotals = cart.reduce(function (acc, item) {
-                    return acc + subtotalOf(item);
-                }, 0);
+                var amounts = computeAmounts();
 
-                var discount = parseFloat(discountInput.value) || 0;
+                totalDisplay.textContent = money(amounts.total);
+                debtDisplay.textContent = money(amounts.debt);
+                statusDisplay.textContent = amounts.fiada ? 'fiada' : 'pagada';
 
-                totalDisplay.textContent = money(Math.max(0, subtotals - discount));
+                nameInput.required = amounts.fiada;
+                phoneInput.required = amounts.fiada;
             }
 
             if (addButton) {
@@ -227,9 +251,24 @@
             }
 
             discountInput.addEventListener('input', render);
+            cashInput.addEventListener('input', render);
+            qrInput.addEventListener('input', render);
+
+            form.addEventListener('submit', function (event) {
+                var amounts = computeAmounts();
+
+                if (amounts.fiada) {
+                    var confirmed = window.confirm(
+                        'La venta quedará marcada como FIADA por un fio de ' + money(amounts.debt) + '. ¿Deseas continuar?'
+                    );
+
+                    if (!confirmed) {
+                        event.preventDefault();
+                    }
+                }
+            });
 
             render();
         })();
     </script>
-</body>
-</html>
+</x-layouts.sistema>

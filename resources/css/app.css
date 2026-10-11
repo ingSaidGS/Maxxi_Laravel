@@ -1,3 +1,71 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Evita el destello de elementos controlados con Alpine antes de inicializar. */
+[x-cloak] {
+    display: none !important;
+}
+
+/*
+ * Estilos base para las vistas de recursos que todavía usan HTML clásico.
+ * Tailwind (preflight) reinicia los estilos del navegador; aquí restauramos una
+ * presentación legible para tablas, formularios y listas.
+ *
+ * Se usa :where(...) para que la especificidad sea la de .contenido y así las
+ * utilidades de Tailwind (capa utilities) siempre puedan sobrescribir estos
+ * estilos en las vistas nuevas/refactorizadas.
+ */
+@layer base {
+    .contenido :where(h1) {
+        @apply mb-4 text-2xl font-semibold text-gray-800;
+    }
+
+    .contenido :where(h2) {
+        @apply mb-3 text-xl font-semibold text-gray-800;
+    }
+
+    .contenido :where(p) {
+        @apply mb-3;
+    }
+
+    .contenido :where(ul) {
+        @apply mb-3 list-disc pl-6;
+    }
+
+    .contenido :where(dl) {
+        @apply mb-4;
+    }
+
+    .contenido :where(dt) {
+        @apply mt-3 font-semibold text-gray-700;
+    }
+
+    .contenido :where(dd) {
+        @apply text-gray-800;
+    }
+
+    .contenido :where(table) {
+        @apply mb-4 w-full border-collapse text-sm;
+    }
+
+    .contenido :where(th, td) {
+        @apply border border-gray-300 px-3 py-2 text-left align-top;
+    }
+
+    .contenido :where(th) {
+        @apply bg-gray-100 font-semibold text-gray-700;
+    }
+
+    .contenido :where(a) {
+        @apply text-maxxi-orange hover:underline;
+    }
+
+    .contenido :where(label) {
+        @apply mb-1 block font-medium text-gray-700;
+    }
+
+    .contenido :where(button) {
+        @apply rounded-md bg-maxxi-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-maxxi-orange focus:outline-none focus:ring-2 focus:ring-maxxi-orange;
+    }
+}

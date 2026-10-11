@@ -8,62 +8,64 @@
 }
 
 /*
- * Estilos base para las vistas de recursos migradas al layout del sistema.
- * Tailwind (preflight) reinicia los estilos por defecto del navegador; aquí
- * restauramos una presentación legible para tablas, formularios y listas que
- * todavía se escriben con HTML clásico.
+ * Estilos base para las vistas de recursos que todavía usan HTML clásico.
+ * Tailwind (preflight) reinicia los estilos del navegador; aquí restauramos una
+ * presentación legible para tablas, formularios y listas.
+ *
+ * Se usa :where(...) para que la especificidad sea la de .contenido y así las
+ * utilidades de Tailwind (capa utilities) siempre puedan sobrescribir estos
+ * estilos en las vistas nuevas/refactorizadas.
  */
 @layer base {
-    .contenido h1 {
+    .contenido :where(h1) {
         @apply mb-4 text-2xl font-semibold text-gray-800;
     }
 
-    .contenido h2 {
+    .contenido :where(h2) {
         @apply mb-3 text-xl font-semibold text-gray-800;
     }
 
-    .contenido p {
+    .contenido :where(p) {
         @apply mb-3;
     }
 
-    .contenido ul {
+    .contenido :where(ul) {
         @apply mb-3 list-disc pl-6;
     }
 
-    .contenido dl {
+    .contenido :where(dl) {
         @apply mb-4;
     }
 
-    .contenido dt {
+    .contenido :where(dt) {
         @apply mt-3 font-semibold text-gray-700;
     }
 
-    .contenido dd {
+    .contenido :where(dd) {
         @apply text-gray-800;
     }
 
-    .contenido table {
+    .contenido :where(table) {
         @apply mb-4 w-full border-collapse text-sm;
     }
 
-    .contenido th,
-    .contenido td {
+    .contenido :where(th, td) {
         @apply border border-gray-300 px-3 py-2 text-left align-top;
     }
 
-    .contenido th {
+    .contenido :where(th) {
         @apply bg-gray-100 font-semibold text-gray-700;
     }
 
-    .contenido a {
+    .contenido :where(a) {
         @apply text-maxxi-orange hover:underline;
     }
 
-    .contenido label {
+    .contenido :where(label) {
         @apply mb-1 block font-medium text-gray-700;
     }
 
-    .contenido button {
+    .contenido :where(button) {
         @apply rounded-md bg-maxxi-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-maxxi-orange focus:outline-none focus:ring-2 focus:ring-maxxi-orange;
     }
 }

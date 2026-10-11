@@ -86,6 +86,28 @@
             </div>
 
             <div class="sm:col-span-2">
+                <span class="mb-2 block text-sm font-medium text-gray-700">Tamaño</span>
+                <div class="flex flex-wrap gap-x-8 gap-y-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
+                    <label for="presentation_size_pequeno" class="mb-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <input type="radio" id="presentation_size_pequeno" name="presentation_size" value="pequeño" required
+                               @checked(old('presentation_size', $presentation->presentation_size) === 'pequeño')
+                               class="h-4 w-4 border-gray-300 text-maxxi-orange focus:ring-maxxi-orange">
+                        Pequeño
+                    </label>
+
+                    <label for="presentation_size_grande" class="mb-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <input type="radio" id="presentation_size_grande" name="presentation_size" value="grande"
+                               @checked(old('presentation_size', $presentation->presentation_size) === 'grande')
+                               class="h-4 w-4 border-gray-300 text-maxxi-orange focus:ring-maxxi-orange">
+                        Grande
+                    </label>
+                </div>
+                @error('presentation_size')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="sm:col-span-2">
                 <span class="mb-2 block text-sm font-medium text-gray-700">Disponibilidad</span>
                 <div class="flex flex-wrap gap-x-8 gap-y-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
                     <label for="purchase_enable" class="mb-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700">

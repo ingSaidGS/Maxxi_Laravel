@@ -95,6 +95,13 @@
             </div>
 
             <div>
+                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Tamaño</dt>
+                <dd class="mt-1 text-sm text-gray-800">
+                    {{ $presentation->presentation_size ? ucfirst($presentation->presentation_size) : '—' }}
+                </dd>
+            </div>
+
+            <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Precio de venta</dt>
                 <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->sale_price ?? '—' }}</dd>
             </div>

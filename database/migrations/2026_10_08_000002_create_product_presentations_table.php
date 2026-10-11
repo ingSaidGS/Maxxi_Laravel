@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('desired_profit', 10, 1);
             $table->decimal('sale_price', 10, 1)->nullable();
             $table->string('barcode', 20)->nullable();
+            $table->enum('presentation_size', ['pequeño', 'grande'])->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });

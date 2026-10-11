@@ -108,10 +108,18 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                     <div id="presentation-search-wrap" class="relative flex-1">
                         <label for="presentation-search" class="mb-1 block text-sm font-medium text-gray-700">Producto</label>
-                        <input type="text" id="presentation-search" autocomplete="off" spellcheck="false"
-                               role="combobox" aria-expanded="false" aria-controls="presentation-results" aria-autocomplete="list"
-                               placeholder="Escribe el nombre o escanea el código de barras…"
-                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                        <div class="flex items-stretch gap-2">
+                            <input type="text" id="presentation-search" autocomplete="off" spellcheck="false"
+                                   role="combobox" aria-expanded="false" aria-controls="presentation-results" aria-autocomplete="list"
+                                   placeholder="Escribe el nombre o escanea el código de barras…"
+                                   class="block w-full min-w-0 flex-1 rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                            <button type="button" id="barcode-scan-open" aria-label="Escanear código de barras" title="Escanear código de barras"
+                                    class="inline-flex w-10 shrink-0 items-center justify-center rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5v9M6.75 7.5v9M9.75 7.5v2.25M9.75 14.25v2.25M12.75 7.5v2.25M12.75 14.25v2.25M15.75 7.5v9M18.75 7.5v2.25M18.75 14.25v2.25M21 9v6" />
+                                </svg>
+                            </button>
+                        </div>
                         <ul id="presentation-results" role="listbox"
                             class="absolute z-20 mt-1 hidden max-h-64 w-full list-none overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 pl-0 shadow-xl ring-1 ring-black/5"></ul>
                     </div>
@@ -211,6 +219,49 @@
                 </button>
                 <button type="button" id="confirm-purchase-button" class="{{ $botones['primario'] }}">
                     Sí, registrar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Modal: escanear código de barras --}}
+    <x-modal name="barcode-scanner" max-width="md">
+        <div class="p-5 sm:p-6"
+             x-init="$watch('show', value => {
+                if (value) { setTimeout(() => window.startBarcodeScanner && window.startBarcodeScanner(), 150); }
+                else { window.stopBarcodeScanner && window.stopBarcodeScanner(); }
+             })">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-navy/5 text-maxxi-navy">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5v9M6.75 7.5v9M9.75 7.5v2.25M9.75 14.25v2.25M12.75 7.5v2.25M12.75 14.25v2.25M15.75 7.5v9M18.75 7.5v2.25M18.75 14.25v2.25M21 9v6" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">Escanear código de barras</h2>
+                    <p class="mb-0 text-sm text-gray-600">Apunta la cámara al código del producto. Al leerlo se selecciona y solo tendrás que pulsar <span class="font-medium">Agregar</span>.</p>
+                </div>
+            </div>
+
+            <div id="barcode-reader" class="mt-4 aspect-video w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-900"></div>
+            <p id="barcode-status" class="mt-2 mb-0 text-sm text-gray-500">Iniciando la cámara…</p>
+
+            {{-- Entrada manual como respaldo (si la cámara no está disponible) --}}
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <label for="barcode-manual" class="mb-1 block text-sm font-medium text-gray-700">Escribir el código manualmente</label>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <input type="text" id="barcode-manual" autocomplete="off" spellcheck="false"
+                           placeholder="Ej. 7501234567890"
+                           class="block w-full flex-1 rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                    <button type="button" id="barcode-manual-apply" class="{{ $botones['secundario'] }} w-full sm:w-auto">
+                        Usar código
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'barcode-scanner')">
+                    Cerrar
                 </button>
             </div>
         </div>
@@ -784,6 +835,103 @@
                 qtyInput.addEventListener('input', updateSelectionBanner);
             }
 
+            // ============================================================
+            // Escáner de código de barras (cámara + respaldo manual)
+            // ============================================================
+            var barcodeScanOpen = document.getElementById('barcode-scan-open');
+            var barcodeStatus = document.getElementById('barcode-status');
+            var barcodeManual = document.getElementById('barcode-manual');
+            var barcodeManualApply = document.getElementById('barcode-manual-apply');
+
+            // Inserta un código (escaneado o escrito a mano) en el buscador; la
+            // coincidencia exacta de refreshResults() lo selecciona en el label
+            // verde y queda a la espera del botón "Agregar".
+            function applyScannedBarcode(code) {
+                code = (code || '').trim();
+                if (code === '' || !searchInput) { return; }
+
+                searchInput.value = code;
+                selectedId = null;
+                highlight = 0;
+                refreshResults();
+                searchInput.focus();
+            }
+
+            // Traduce el error de la cámara a un mensaje claro en español.
+            function barcodeErrorMessage(error) {
+                var name = error && error.name;
+                var message = (error && error.message) || '';
+
+                if (name === 'NotAllowedError' || /permission|denied/i.test(message)) {
+                    return 'Permiso de cámara denegado. Habilítalo en el navegador e inténtalo de nuevo.';
+                }
+                if (name === 'NotFoundError' || name === 'OverconstrainedError' || /no camera|not found/i.test(message)) {
+                    return 'No se encontró una cámara disponible en este dispositivo.';
+                }
+                if (name === 'NotReadableError') {
+                    return 'La cámara está en uso por otra aplicación. Ciérrala e inténtalo de nuevo.';
+                }
+                if (name === 'SecurityError') {
+                    return 'El acceso a la cámara requiere una conexión segura (HTTPS). Puedes escribir el código manualmente.';
+                }
+                return 'No se pudo iniciar la cámara. Escribe el código manualmente en el campo de abajo.';
+            }
+
+            function setBarcodeStatus(message, isError) {
+                if (!barcodeStatus) { return; }
+                barcodeStatus.textContent = message;
+                barcodeStatus.classList.toggle('text-red-600', !!isError);
+                barcodeStatus.classList.toggle('text-gray-500', !isError);
+            }
+
+            window.startBarcodeScanner = function () {
+                if (barcodeManual) { barcodeManual.value = ''; }
+                setBarcodeStatus('Iniciando la cámara…', false);
+
+                if (!window.MaxxiBarcodeScanner) {
+                    setBarcodeStatus('El escáner aún no está listo. Intenta de nuevo en un momento.', true);
+                    return;
+                }
+
+                window.MaxxiBarcodeScanner.start('barcode-reader', function (decodedText) {
+                    // Éxito: se detiene la cámara, se cierra el modal y se inserta
+                    // el código en el buscador (la coincidencia exacta lo marca).
+                    window.stopBarcodeScanner();
+                    window.dispatchEvent(new CustomEvent('close-modal', { detail: 'barcode-scanner' }));
+                    applyScannedBarcode(decodedText);
+                }, function (error) {
+                    setBarcodeStatus(barcodeErrorMessage(error), true);
+                });
+            };
+
+            window.stopBarcodeScanner = function () {
+                if (window.MaxxiBarcodeScanner) { window.MaxxiBarcodeScanner.stop(); }
+            };
+
+            if (barcodeScanOpen) {
+                barcodeScanOpen.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'barcode-scanner' }));
+                });
+            }
+
+            if (barcodeManualApply) {
+                barcodeManualApply.addEventListener('click', function () {
+                    var code = (barcodeManual.value || '').trim();
+                    if (code === '') { return; }
+                    window.dispatchEvent(new CustomEvent('close-modal', { detail: 'barcode-scanner' }));
+                    applyScannedBarcode(code);
+                });
+            }
+
+            if (barcodeManual) {
+                barcodeManual.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        if (barcodeManualApply) { barcodeManualApply.click(); }
+                    }
+                });
+            }
+
             var bypassConfirm = false;
 
             function openConfirmModal() {
@@ -833,4 +981,8 @@
             render();
         })();
     </script>
+
+    @once
+        @vite('resources/js/barcode-scanner.js')
+    @endonce
 </x-layouts.sistema>

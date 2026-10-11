@@ -61,6 +61,34 @@ class ProductPresentationService
     }
 
     /**
+     * Actualiza el costo de referencia de una presentación tras registrar una compra.
+     *
+     * El precio de compra ingresado en la línea se guarda como el nuevo
+     * "reference_purchase_cost" de la presentación y, a partir de él, se
+     * sincroniza el costo por unidad base del producto y se recalcula el precio de
+     * venta de las presentaciones activas habilitadas para venta (misma lógica que
+     * al crear o editar la presentación de compra). No hace nada si la presentación
+     * no está habilitada para compra o está inactiva.
+     */
+    public function applyPurchaseCost(ProductPresentation $presentation, float $referenceCost): void
+    {
+        $presentation->loadMissing('product');
+
+        if (! $presentation->purchase_enable || ! $presentation->active) {
+            return;
+        }
+
+        $referenceCost = round($referenceCost, 2);
+
+        if ((float) $presentation->reference_purchase_cost !== $referenceCost) {
+            $presentation->update(['reference_purchase_cost' => $referenceCost]);
+        }
+
+        $this->syncBaseUnitCost($presentation);
+        $this->recalculateSalePrices($presentation);
+    }
+
+    /**
      * Reactiva (alta lógica) una presentación.
      *
      * @throws ValidationException

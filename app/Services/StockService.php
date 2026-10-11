@@ -55,6 +55,39 @@ class StockService
     }
 
     /**
+     * Incrementa el stock de cada producto con las cantidades recibidas en unidad base.
+     *
+     * Se usa al registrar una compra: las cantidades por producto se agrupan y el
+     * incremento se aplica en orden ascendente de "product_id", igual que en
+     * decrementForSale(), para evitar interbloqueos entre transacciones concurrentes.
+     *
+     * @param  iterable<int, array{product_id: int, base_quantity: int}>  $requirements
+     */
+    public function incrementForPurchase(iterable $requirements): void
+    {
+        $quantities = [];
+
+        foreach ($requirements as $requirement) {
+            $productId = (int) $requirement['product_id'];
+            $baseQuantity = (int) $requirement['base_quantity'];
+
+            if ($baseQuantity <= 0) {
+                continue;
+            }
+
+            $quantities[$productId] = ($quantities[$productId] ?? 0) + $baseQuantity;
+        }
+
+        ksort($quantities);
+
+        foreach ($quantities as $productId => $baseQuantity) {
+            Product::query()
+                ->whereKey($productId)
+                ->increment('stock', $baseQuantity);
+        }
+    }
+
+    /**
      * Aborta la operación indicando el producto y el stock disponible.
      *
      * @throws ValidationException

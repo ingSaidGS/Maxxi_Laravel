@@ -58,4 +58,12 @@ class Sale extends Model
     {
         return $this->hasMany(SaleDetail::class, 'sale_id');
     }
+
+    /**
+     * Get the sale notes delivered into this sale.
+     */
+    public function saleNotes(): HasMany
+    {
+        return $this->hasMany(SaleNote::class, 'sale_id');
+    }
 }

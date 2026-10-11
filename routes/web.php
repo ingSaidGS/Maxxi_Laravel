@@ -6,6 +6,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleNoteController;
+use App\Http\Controllers\SalePreparationController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +50,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/deactivate', [SaleNoteController::class, 'deactivateDetail'])->name('sale-notes.details.deactivate');
     Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/restore', [SaleNoteController::class, 'restoreDetail'])->name('sale-notes.details.restore');
     Route::resource('sale-notes', SaleNoteController::class);
+
+    // Preparación de venta (hoja de alistamiento por fecha de entrega; solo lectura).
+    Route::get('sale-preparations', [SalePreparationController::class, 'index'])->name('sale-preparations.index');
 });
 
 require __DIR__.'/auth.php';

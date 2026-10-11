@@ -6,11 +6,12 @@
         ['label' => 'Productos', 'href' => route('products.index'), 'active' => request()->routeIs('products.*') || request()->routeIs('product-presentations.*')],
         ['label' => 'Ventas', 'href' => route('sales.index'), 'active' => request()->routeIs('sales.*')],
         ['label' => 'Notas de venta', 'href' => route('sale-notes.index'), 'active' => request()->routeIs('sale-notes.*')],
+        ['label' => 'Preparación', 'href' => route('sale-preparations.index'), 'active' => request()->routeIs('sale-preparations.*')],
         ['label' => 'Compras', 'href' => route('purchases.index'), 'active' => request()->routeIs('purchases.*')],
     ];
 @endphp
 
-<header x-data="{ open: false }" class="sticky top-0 z-50 border-b border-white/10 bg-maxxi-navy text-white shadow-md">
+<header x-data="{ open: false }" class="sticky top-0 z-50 border-b border-white/10 bg-maxxi-navy text-white shadow-md print:hidden">
     <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {{-- Botón hamburguesa + isotipo --}}
         <div class="flex items-center gap-2">

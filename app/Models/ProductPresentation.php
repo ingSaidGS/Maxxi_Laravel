@@ -23,6 +23,7 @@ class ProductPresentation extends Model
         'reference_purchase_cost',
         'desired_profit',
         'barcode',
+        'presentation_size',
         'active',
     ];
 

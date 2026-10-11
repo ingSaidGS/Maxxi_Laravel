@@ -14,6 +14,7 @@ trait HasPresentationRules
         return [
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             'conversion_factor' => ['required', 'integer', 'min:0'],
+            'presentation_size' => ['required', 'in:pequeño,grande'],
             'sale_price' => ['nullable', 'numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
             'purchase_enable' => ['boolean'],
             'sale_enable' => ['boolean'],

@@ -40,7 +40,7 @@
     @endif
 
     {{-- Formulario --}}
-    <form action="{{ route('product-presentations.store') }}" method="POST"
+    <form id="presentation-form" action="{{ route('product-presentations.store') }}" method="POST"
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
 
@@ -77,7 +77,7 @@
             <div>
                 <label for="conversion_factor" class="mb-1 block text-sm font-medium text-gray-700">Factor de conversión</label>
                 <input type="number" id="conversion_factor" name="conversion_factor"
-                       value="{{ old('conversion_factor', 1) }}" step="1" min="0" required
+                       value="{{ old('conversion_factor', 1) }}" step="1" min="0" required placeholder="Ej.: 24"
                        @error('conversion_factor') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('conversion_factor') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('conversion_factor')
@@ -107,7 +107,7 @@
             <div id="reference-purchase-cost-wrapper" class="sm:col-span-2" hidden>
                 <label for="reference_purchase_cost" class="mb-1 block text-sm font-medium text-gray-700">Costo de compra de referencia</label>
                 <input type="number" id="reference_purchase_cost" name="reference_purchase_cost"
-                       value="{{ old('reference_purchase_cost') }}" step="0.01" min="0" @required(old('purchase_enable'))
+                       value="{{ old('reference_purchase_cost') }}" step="0.01" min="0" @required(old('purchase_enable')) placeholder="Ej.: 120.00"
                        @error('reference_purchase_cost') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('reference_purchase_cost') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('reference_purchase_cost')
@@ -118,7 +118,7 @@
             <div id="sale-price-wrapper" class="sm:col-span-2" hidden>
                 <label for="sale_price" class="mb-1 block text-sm font-medium text-gray-700">Precio de venta</label>
                 <input type="number" id="sale_price" name="sale_price"
-                       value="{{ old('sale_price') }}" step="0.1" min="0"
+                       value="{{ old('sale_price') }}" step="0.1" min="0" placeholder="Ej.: 25.50"
                        @error('sale_price') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('sale_price') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('sale_price')
@@ -129,7 +129,7 @@
             <div>
                 <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">Ganancia deseada</label>
                 <input type="number" id="desired_profit" name="desired_profit"
-                       value="{{ old('desired_profit') }}" step="0.1" min="0" required
+                       value="{{ old('desired_profit') }}" step="0.1" min="0" required placeholder="Ej.: 5.50"
                        @error('desired_profit') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('desired_profit') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('desired_profit')
@@ -139,7 +139,7 @@
 
             <div>
                 <label for="barcode" class="mb-1 block text-sm font-medium text-gray-700">Código de barras <span class="font-normal text-gray-400">(opcional)</span></label>
-                <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" maxlength="20"
+                <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" maxlength="20" autocomplete="off" placeholder="Ej.: 7501234567890"
                        @error('barcode') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('barcode') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('barcode')
@@ -201,7 +201,7 @@
 
             saleWrapper.hidden = !saleEnabled;
             saleInput.disabled = !saleEnabled || salePriceLocked;
-            saleInput.placeholder = salePriceLocked ? 'Requiere una presentación de compra activa' : '';
+            saleInput.placeholder = salePriceLocked ? 'Requiere una presentación de compra activa' : 'Ej.: 25.50';
             if (!saleEnabled || salePriceLocked) {
                 saleInput.value = '';
             }
@@ -221,5 +221,99 @@
         if (saleInput.value.trim() === '') {
             calculateSalePrice();
         }
+    </script>
+
+    {{-- Modal: confirmar la creación de la presentación --}}
+    <x-modal name="confirm-presentation" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-orange/10 text-maxxi-orange-dark">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Registrar esta presentación?</h2>
+                    <p id="confirm-presentation-summary" class="mb-0 text-sm text-gray-600"></p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-presentation')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-presentation-button" class="{{ $botones['primario'] }}">
+                    Sí, registrar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación antes de enviar el formulario --}}
+    <script>
+        (function () {
+            var form = document.getElementById('presentation-form');
+            var unitSelect = document.getElementById('unit_id');
+            var factorInput = document.getElementById('conversion_factor');
+            var summary = document.getElementById('confirm-presentation-summary');
+            var confirmButton = document.getElementById('confirm-presentation-button');
+            var productName = @json($product->name);
+            var bypassConfirm = false;
+
+            function selectedUnitLabel() {
+                if (!unitSelect || unitSelect.selectedIndex < 0) {
+                    return '';
+                }
+
+                return (unitSelect.options[unitSelect.selectedIndex]?.text || '')
+                    .trim()
+                    .replace(/\s+/g, ' ');
+            }
+
+            function openConfirmModal() {
+                var unit = selectedUnitLabel();
+                var factor = (factorInput?.value || '').trim();
+                var label = unit && factor ? unit + ' (x' + factor + ')' : unit;
+
+                if (summary) {
+                    summary.textContent = 'Se registrará la presentación'
+                        + (label ? ' «' + label + '»' : '')
+                        + ' del producto «' + productName + '».';
+                }
+
+                if (window.Alpine) {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-presentation' }));
+                    return;
+                }
+
+                // Respaldo por si el modal no está disponible.
+                if (window.confirm('¿Registrar la presentación de «' + productName + '»?')) {
+                    bypassConfirm = true;
+                    form.requestSubmit();
+                    bypassConfirm = false;
+                }
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (bypassConfirm) { return; }
+
+                event.preventDefault();
+                openConfirmModal();
+            });
+
+            confirmButton.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'confirm-presentation' }));
+
+                bypassConfirm = true;
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+
+                bypassConfirm = false;
+            });
+        })();
     </script>
 </x-layouts.sistema>

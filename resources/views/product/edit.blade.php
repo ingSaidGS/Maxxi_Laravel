@@ -49,7 +49,7 @@
     @endif
 
     {{-- Formulario --}}
-    <form action="{{ route('products.update', $product) }}" method="POST"
+    <form id="product-form" action="{{ route('products.update', $product) }}" method="POST"
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
         @method('PUT')
@@ -57,7 +57,7 @@
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
                 <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text" id="name" name="name" value="{{ old('name', $product->name) }}" maxlength="20" required autofocus
+                <input type="text" id="name" name="name" value="{{ old('name', $product->name) }}" maxlength="20" required autofocus autocomplete="off" placeholder="Ej.: Arroz"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('name')
@@ -93,4 +93,95 @@
             </button>
         </div>
     </form>
+
+    {{-- Modal: confirmar la actualización del producto --}}
+    <x-modal name="confirm-product" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-orange/10 text-maxxi-orange-dark">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Actualizar este producto?</h2>
+                    <p id="confirm-product-summary" class="mb-0 text-sm text-gray-600"></p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-product')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-product-button" class="{{ $botones['primario'] }}">
+                    Sí, actualizar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación antes de enviar el formulario --}}
+    <script>
+        (function () {
+            var form = document.getElementById('product-form');
+            var nameInput = document.getElementById('name');
+            var baseUnitSelect = document.getElementById('base_unit_id');
+            var summary = document.getElementById('confirm-product-summary');
+            var confirmButton = document.getElementById('confirm-product-button');
+            var bypassConfirm = false;
+
+            function selectedUnitLabel() {
+                if (!baseUnitSelect || baseUnitSelect.selectedIndex < 0) {
+                    return '';
+                }
+
+                return (baseUnitSelect.options[baseUnitSelect.selectedIndex]?.text || '')
+                    .trim()
+                    .replace(/\s+/g, ' ');
+            }
+
+            function openConfirmModal() {
+                var name = (nameInput?.value || '').trim();
+                var unit = selectedUnitLabel();
+
+                if (summary) {
+                    summary.textContent = 'Se actualizará el producto «' + name + '»'
+                        + (unit ? ' con unidad base «' + unit + '»' : '') + '.';
+                }
+
+                if (window.Alpine) {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-product' }));
+                    return;
+                }
+
+                // Respaldo por si el modal no está disponible.
+                if (window.confirm('¿Actualizar el producto «' + name + '»?')) {
+                    bypassConfirm = true;
+                    form.requestSubmit();
+                    bypassConfirm = false;
+                }
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (bypassConfirm) { return; }
+
+                event.preventDefault();
+                openConfirmModal();
+            });
+
+            confirmButton.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'confirm-product' }));
+
+                bypassConfirm = true;
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+
+                bypassConfirm = false;
+            });
+        })();
+    </script>
 </x-layouts.sistema>

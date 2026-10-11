@@ -40,14 +40,14 @@
     @endif
 
     {{-- Formulario --}}
-    <form action="{{ route('products.store') }}" method="POST"
+    <form id="product-form" action="{{ route('products.store') }}" method="POST"
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
                 <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="20" required autofocus
+                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="20" required autofocus autocomplete="off" placeholder="Ej.: Arroz"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('name')
@@ -83,4 +83,95 @@
             </button>
         </div>
     </form>
+
+    {{-- Modal: confirmar la creación del producto --}}
+    <x-modal name="confirm-product" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-orange/10 text-maxxi-orange-dark">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Registrar este producto?</h2>
+                    <p id="confirm-product-summary" class="mb-0 text-sm text-gray-600"></p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-product')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-product-button" class="{{ $botones['primario'] }}">
+                    Sí, registrar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación antes de enviar el formulario --}}
+    <script>
+        (function () {
+            var form = document.getElementById('product-form');
+            var nameInput = document.getElementById('name');
+            var baseUnitSelect = document.getElementById('base_unit_id');
+            var summary = document.getElementById('confirm-product-summary');
+            var confirmButton = document.getElementById('confirm-product-button');
+            var bypassConfirm = false;
+
+            function selectedUnitLabel() {
+                if (!baseUnitSelect || baseUnitSelect.selectedIndex < 0) {
+                    return '';
+                }
+
+                return (baseUnitSelect.options[baseUnitSelect.selectedIndex]?.text || '')
+                    .trim()
+                    .replace(/\s+/g, ' ');
+            }
+
+            function openConfirmModal() {
+                var name = (nameInput?.value || '').trim();
+                var unit = selectedUnitLabel();
+
+                if (summary) {
+                    summary.textContent = 'Se registrará el producto «' + name + '»'
+                        + (unit ? ' con unidad base «' + unit + '»' : '') + '.';
+                }
+
+                if (window.Alpine) {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-product' }));
+                    return;
+                }
+
+                // Respaldo por si el modal no está disponible.
+                if (window.confirm('¿Registrar el producto «' + name + '»?')) {
+                    bypassConfirm = true;
+                    form.requestSubmit();
+                    bypassConfirm = false;
+                }
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (bypassConfirm) { return; }
+
+                event.preventDefault();
+                openConfirmModal();
+            });
+
+            confirmButton.addEventListener('click', function () {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'confirm-product' }));
+
+                bypassConfirm = true;
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+
+                bypassConfirm = false;
+            });
+        })();
+    </script>
 </x-layouts.sistema>

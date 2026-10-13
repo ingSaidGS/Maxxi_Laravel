@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductPresentationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleNoteController;
 use App\Http\Controllers\SalePreparationController;
@@ -14,14 +16,13 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Unidades de medida (baja lógica vía "active" + restore)
     Route::patch('units/{unit}/restore', [UnitController::class, 'restore'])->name('units.restore');
@@ -53,6 +54,10 @@ Route::middleware('auth')->group(function () {
 
     // Preparación de venta (hoja de alistamiento por fecha de entrega; solo lectura).
     Route::get('sale-preparations', [SalePreparationController::class, 'index'])->name('sale-preparations.index');
+
+    // Reportes (solo lectura, calculados en vivo desde ventas y detalles).
+    Route::get('reports/export', [ReportController::class, 'exportExcel'])->name('reports.export');
+    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
 });
 
 require __DIR__.'/auth.php';

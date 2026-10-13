@@ -101,6 +101,23 @@ class ProductPresentationService
 
         $presentation->update(['active' => true]);
 
+        // Tras reactivar, se recalcula el costo por unidad base y los precios de
+        // venta a partir de la presentación de compra activa del producto. Si la
+        // presentación reactivada es la de compra, se usa directamente; si no, se
+        // busca la presentación de compra activa del producto.
+        $purchasePresentation = $presentation->purchase_enable
+            ? $presentation
+            : ProductPresentation::query()
+                ->where('product_id', $presentation->product_id)
+                ->where('purchase_enable', true)
+                ->where('active', true)
+                ->first();
+
+        if ($purchasePresentation !== null) {
+            $this->syncBaseUnitCost($purchasePresentation);
+            $this->recalculateSalePrices($purchasePresentation);
+        }
+
         return $presentation;
     }
 

@@ -7,6 +7,7 @@
         ['label' => 'Ventas', 'href' => route('sales.index'), 'active' => request()->routeIs('sales.*')],
         ['label' => 'Notas de venta', 'href' => route('sale-notes.index'), 'active' => request()->routeIs('sale-notes.*')],
         ['label' => 'Preparación', 'href' => route('sale-preparations.index'), 'active' => request()->routeIs('sale-preparations.*')],
+        ['label' => 'Reportes', 'href' => route('reports.index'), 'active' => request()->routeIs('reports.*')],
         ['label' => 'Compras', 'href' => route('purchases.index'), 'active' => request()->routeIs('purchases.*')],
     ];
 @endphp
@@ -83,8 +84,7 @@
                     </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" class="rounded-md px-3 py-2 text-sm font-medium text-white/90 transition hover:text-maxxi-orange">Iniciar sesión</a>
-                <a href="{{ route('register') }}" class="rounded-md bg-maxxi-orange px-3 py-2 text-sm font-semibold text-white transition hover:bg-maxxi-orange-dark">Registrarse</a>
+                <a href="{{ route('login') }}" class="rounded-md bg-maxxi-orange px-3 py-2 text-sm font-semibold text-white transition hover:bg-maxxi-orange-dark">Iniciar sesión</a>
             @endauth
         </div>
     </nav>
@@ -119,7 +119,6 @@
                 </div>
             @else
                 <a href="{{ route('login') }}" class="block rounded-md px-3 py-2 text-base font-medium text-white/85 transition hover:bg-white/5 hover:text-maxxi-orange">Iniciar sesión</a>
-                <a href="{{ route('register') }}" class="block rounded-md px-3 py-2 text-base font-medium text-white/85 transition hover:bg-white/5 hover:text-maxxi-orange">Registrarse</a>
             @endauth
         </div>
     </div>

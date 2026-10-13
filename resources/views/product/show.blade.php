@@ -16,8 +16,20 @@
         ->first(fn ($presentation) => $presentation->purchase_enable && $presentation->active);
     $purchaseConversionFactor = (int) ($purchasePresentation?->conversion_factor ?? 0);
     $purchaseCost = $purchasePresentation?->reference_purchase_cost;
+
+    // Formatea montos sin decimales innecesarios: 200 -> "200", 24.5 -> "24.5", 24.05 -> "24.05".
+    $formatAmount = function ($value): ?string {
+        if ($value === null) {
+            return null;
+        }
+
+        $formatted = rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    };
+
     $unitPurchasePrice = $purchasePresentation !== null && $purchaseConversionFactor > 0 && $purchaseCost !== null
-        ? number_format((float) $purchaseCost / $purchaseConversionFactor, 2, '.', '')
+        ? $formatAmount((float) $purchaseCost / $purchaseConversionFactor)
         : null;
 
     // Pluralización simple en español: vocal final -> +s, consonante -> +es.
@@ -155,14 +167,14 @@
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Precio de compra unitario</dt>
-                <dd class="mt-1 text-sm text-gray-800">{{ $unitPurchasePrice ?? '—' }}</dd>
+                <dd class="mt-1 text-sm text-gray-800">{{ $unitPurchasePrice !== null ? $unitPurchasePrice.' Bs.' : '—' }}</dd>
             </div>
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Presentación de compra</dt>
                 <dd class="mt-1 text-sm text-gray-800">
                     @if ($purchasePresentation && $purchasePresentation->unit && $product->baseUnit)
-                        {{ $purchasePresentation->unit->name }} de {{ $purchasePresentation->conversion_factor }} {{ $product->baseUnit->name }} a {{ $purchasePresentation->reference_purchase_cost }} bs
+                        {{ $purchasePresentation->unit->name }} de {{ $purchasePresentation->conversion_factor }} {{ $product->baseUnit->name }} a {{ $formatAmount($purchasePresentation->reference_purchase_cost) }} bs
                     @else
                         —
                     @endif
@@ -346,8 +358,8 @@
                                             <span class="text-gray-400">—</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->conversion_factor }}</td>
-                                    <td class="px-4 py-3 tabular-nums text-gray-800">{{ $presentation->sale_price ?? '—' }}</td>
+                                    <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->conversion_factor }}{{ $product->baseUnit ? ' '.$pluralize($product->baseUnit->name, (int) $presentation->conversion_factor) : '' }}</td>
+                                    <td class="px-4 py-3 tabular-nums text-gray-800">{{ $presentation->sale_price !== null ? $formatAmount($presentation->sale_price).' Bs.' : '—' }}</td>
                                     <td data-href-ignore class="px-4 py-3">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
@@ -391,8 +403,8 @@
                                         —
                                     @endif
                                 </p>
-                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Factor: <span class="font-medium text-gray-800">{{ $presentation->conversion_factor }}</span></p>
-                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Precio venta: <span class="font-medium text-gray-800">{{ $presentation->sale_price ?? '—' }}</span></p>
+                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Factor: <span class="font-medium text-gray-800">{{ $presentation->conversion_factor }}{{ $product->baseUnit ? ' '.$pluralize($product->baseUnit->name, (int) $presentation->conversion_factor) : '' }}</span></p>
+                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Precio venta: <span class="font-medium text-gray-800">{{ $presentation->sale_price !== null ? $formatAmount($presentation->sale_price).' Bs.' : '—' }}</span></p>
                             </div>
 
                             <div data-href-ignore class="mt-4 flex flex-wrap gap-2">

@@ -4,6 +4,19 @@
         'secundario' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-2 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
     ];
+
+    // Formatea montos sin decimales innecesarios: 200 -> "200", 24.5 -> "24.5", 24.05 -> "24.05".
+    $formatAmount = function ($value): ?string {
+        if ($value === null) {
+            return null;
+        }
+
+        $formatted = rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    };
+
+    $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
 @endphp
 
 <x-layouts.sistema title="Presentación #{{ $presentation->id }}">
@@ -91,7 +104,7 @@
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Factor de conversión</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->conversion_factor }}</dd>
+                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->conversion_factor }}{{ $baseUnitSymbol ? ' '.$baseUnitSymbol : '' }}</dd>
             </div>
 
             <div>
@@ -103,17 +116,17 @@
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Precio de venta</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->sale_price ?? '—' }}</dd>
+                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->sale_price !== null ? $formatAmount($presentation->sale_price).' Bs.' : '—' }}</dd>
             </div>
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Costo de compra de referencia</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->reference_purchase_cost ?? '—' }}</dd>
+                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->reference_purchase_cost !== null ? $formatAmount($presentation->reference_purchase_cost).' Bs.' : '—' }}</dd>
             </div>
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Ganancia deseada</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->desired_profit }}</dd>
+                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->desired_profit !== null ? $formatAmount($presentation->desired_profit).' Bs.' : '—' }}</dd>
             </div>
 
             <div>

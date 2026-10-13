@@ -6,16 +6,57 @@
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
     ];
 
-    // Tamaño de la presentación (badge maxxi-ui).
-    $sizeMeta = [
-        'grande' => ['label' => 'Grande', 'class' => 'bg-maxxi-orange/15 text-maxxi-orange-dark'],
-        'pequeño' => ['label' => 'Pequeño', 'class' => 'bg-maxxi-navy/10 text-maxxi-navy'],
-    ];
-
     // Pluraliza la unidad según la cantidad (vocal final → +s, consonante → +es).
-    $pluralize = fn (string $name, int $count): string => $count === 1
+    $pluralize = fn (string $name, int|float $count): string => (float) $count === 1.0
         ? $name
         : (preg_match('/[aeiou]$/i', $name) ? $name.'s' : $name.'es');
+
+    // Entero sin decimales; si no es múltiplo, 1 decimal (igual que sale.show).
+    $formatQuantity = fn (int|float $value): string => floor((float) $value) == (float) $value
+        ? (string) (int) $value
+        : number_format((float) $value, 1, '.', '');
+
+    // Renglones separados por tamaño de presentación (grande / pequeño).
+    $largeRows = $rows->where('size', 'grande')->values();
+    $smallRows = $rows->where('size', 'pequeño')->values();
+    $unsizedRows = $rows->filter(fn (array $row): bool => ! in_array($row['size'], ['grande', 'pequeño'], true))->values();
+
+    // Iconos (Heroicons) por sección: camión para grandes, caja para pequeños.
+    $groups = [
+        [
+            'key' => 'grande',
+            'title' => 'Grandes',
+            'hint' => 'Empaques grandes',
+            'path' => 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H18.75m-2.25 3.75H14.25m4.5-3.75V6.75A2.25 2.25 0 0016.5 4.5h-6A2.25 2.25 0 008.25 6.75v4.5m0 0H3.375A1.125 1.125 0 002.25 12.375v1.5c0 .621.504 1.125 1.125 1.125h1.5',
+            'chip' => 'bg-maxxi-orange/15 text-maxxi-orange-dark',
+            'badge' => 'bg-maxxi-orange/15 text-maxxi-orange-dark',
+            'rows' => $largeRows,
+            'always' => true,
+        ],
+        [
+            'key' => 'pequeño',
+            'title' => 'Pequeños',
+            'hint' => 'Empaques pequeños',
+            'path' => 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
+            'chip' => 'bg-maxxi-navy/10 text-maxxi-navy',
+            'badge' => 'bg-maxxi-navy/10 text-maxxi-navy',
+            'rows' => $smallRows,
+            'always' => true,
+        ],
+    ];
+
+    if ($unsizedRows->isNotEmpty()) {
+        $groups[] = [
+            'key' => 'sin-tamano',
+            'title' => 'Sin tamaño',
+            'hint' => 'Presentaciones sin tamaño definido',
+            'path' => 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z',
+            'chip' => 'bg-gray-100 text-gray-500',
+            'badge' => 'bg-gray-100 text-gray-600',
+            'rows' => $unsizedRows,
+            'always' => false,
+        ];
+    }
 
     $today = now()->toDateString();
     $tomorrow = now()->addDay()->toDateString();
@@ -79,7 +120,7 @@
         </div>
     @else
         {{-- Tarjetas de resumen --}}
-        <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div class="flex items-center justify-between gap-2">
                     <p class="mb-0 text-xs font-medium uppercase tracking-wide text-gray-400">Notas</p>
@@ -117,96 +158,114 @@
             </div>
         </div>
 
-        {{-- Tabla (escritorio) --}}
-        <div class="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block print:block">
-            <table class="mb-0 w-full border-collapse text-sm">
-                <thead>
-                    <tr class="text-left text-xs uppercase tracking-wide">
-                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Producto</th>
-                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Presentación</th>
-                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Tamaño</th>
-                        <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Cantidad</th>
-                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Desglose por nota</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($rows as $row)
-                        @php($size = $row['size'] !== null ? ($sizeMeta[$row['size']] ?? null) : null)
-                        <tr class="border-t border-gray-100 transition hover:bg-maxxi-cream/60 print:break-inside-avoid">
-                            <td class="px-4 py-3 font-medium text-gray-800">{{ $row['product'] }}</td>
-                            <td class="px-4 py-3 text-gray-600">
-                                {{ $row['unit'] }}
-                                <span class="text-gray-400">(x{{ $row['factor'] }} {{ $row['base_unit_symbol'] }})</span>
-                            </td>
-                            <td class="px-4 py-3">
-                                @if ($size)
-                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $size['class'] }}">{{ $size['label'] }}</span>
-                                @else
-                                    <span class="text-gray-400">—</span>
-                                @endif
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-gray-800">
-                                {{ $row['total'] }} {{ $pluralize($row['unit'], $row['total']) }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <ul class="mb-0 list-none space-y-0.5 p-0">
-                                    @foreach ($row['breakdown'] as $item)
-                                        <li class="text-xs text-gray-500">
-                                            @if ($item['sale_note_id'])
-                                                <a href="{{ route('sale-notes.show', $item['sale_note_id']) }}" class="font-medium text-maxxi-navy hover:text-maxxi-orange">NV #{{ $item['sale_note_id'] }}</a>
-                                            @else
-                                                <span class="font-medium text-maxxi-navy">NV —</span>
-                                            @endif
-                                            · {{ $item['customer'] }}
-                                            · <span class="font-semibold tabular-nums text-gray-700">{{ $item['quantity'] }}</span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Tarjetas (móvil) --}}
-        <div class="space-y-3 md:hidden print:hidden">
-            @foreach ($rows as $row)
-                @php($size = $row['size'] !== null ? ($sizeMeta[$row['size']] ?? null) : null)
-                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div class="flex items-start justify-between gap-3">
+        {{-- Secciones por tamaño: una tabla por grupo (Grandes / Pequeños) --}}
+        @foreach ($groups as $group)
+            @if ($group['rows']->isNotEmpty() || $group['always'])
+                <section class="mb-8">
+                    {{-- Encabezado de la sección --}}
+                    <div class="mb-3 flex items-center gap-3">
+                        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {{ $group['chip'] }}" aria-hidden="true">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ $group['path'] }}" />
+                            </svg>
+                        </span>
                         <div>
-                            <p class="mb-0 font-semibold text-gray-800">{{ $row['product'] }}</p>
-                            <p class="mb-0 mt-0.5 text-sm text-gray-500">{{ $row['unit'] }} (x{{ $row['factor'] }} {{ $row['base_unit_symbol'] }})</p>
+                            <h3 class="mb-0 text-base font-semibold text-gray-800">{{ $group['title'] }}</h3>
+                            <p class="mb-0 text-xs text-gray-500">{{ $group['hint'] }}</p>
                         </div>
-                        @if ($size)
-                            <span class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $size['class'] }}">{{ $size['label'] }}</span>
-                        @endif
+                        <span class="ml-auto inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $group['badge'] }}">
+                            {{ $group['rows']->count() }} {{ $group['rows']->count() === 1 ? 'presentación' : 'presentaciones' }}
+                        </span>
                     </div>
 
-                    <div class="mt-3 rounded-lg bg-maxxi-orange/10 px-3 py-2">
-                        <p class="mb-0 text-[11px] font-semibold uppercase tracking-wide text-maxxi-orange-dark">Cantidad a preparar</p>
-                        <p class="mb-0 mt-0.5 text-lg font-bold tabular-nums text-gray-800">{{ $row['total'] }} {{ $pluralize($row['unit'], $row['total']) }}</p>
-                    </div>
+                    @if ($group['rows']->isEmpty())
+                        {{-- Grupo sin renglones --}}
+                        <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center">
+                            <p class="mb-0 text-sm text-gray-500">Nada por preparar en {{ mb_strtolower($group['title']) }} para esta fecha.</p>
+                        </div>
+                    @else
+                        {{-- Tabla (escritorio) --}}
+                        <div class="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block print:block">
+                            <table class="mb-0 w-full border-collapse text-sm">
+                                <thead>
+                                    <tr class="text-left text-xs uppercase tracking-wide">
+                                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Producto</th>
+                                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Presentación</th>
+                                        <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Cantidad</th>
+                                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Desglose por nota</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($group['rows'] as $row)
+                                        <tr class="border-t border-gray-100 transition hover:bg-maxxi-cream/60 print:break-inside-avoid">
+                                            <td class="px-4 py-3 font-medium text-gray-800">{{ $row['product'] }}</td>
+                                            <td class="px-4 py-3 text-gray-600">
+                                                {{ $row['unit'] }}
+                                                <span class="text-gray-400">(x{{ $row['factor'] }} {{ $row['base_unit_symbol'] }})</span>
+                                            </td>
+                                            <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-gray-800">
+                                                {{ $formatQuantity($row['total']) }} {{ $pluralize($row['unit'], $row['total']) }}
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <ul class="mb-0 list-none space-y-0.5 p-0">
+                                                    @foreach ($row['breakdown'] as $item)
+                                                        <li class="text-xs text-gray-500">
+                                                            @if ($item['sale_note_id'])
+                                                                <a href="{{ route('sale-notes.show', $item['sale_note_id']) }}" class="font-medium text-maxxi-navy hover:text-maxxi-orange">NV #{{ $item['sale_note_id'] }}</a>
+                                                            @else
+                                                                <span class="font-medium text-maxxi-navy">NV —</span>
+                                                            @endif
+                                                            · {{ $item['customer'] }}
+                                                            · <span class="font-semibold tabular-nums text-gray-700">{{ $formatQuantity($item['quantity']) }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
 
-                    <ul class="mb-0 mt-3 list-none space-y-1 p-0">
-                        @foreach ($row['breakdown'] as $item)
-                            <li class="flex items-center justify-between gap-3 text-xs text-gray-500">
-                                <span>
-                                    @if ($item['sale_note_id'])
-                                        <a href="{{ route('sale-notes.show', $item['sale_note_id']) }}" class="font-medium text-maxxi-navy hover:text-maxxi-orange">NV #{{ $item['sale_note_id'] }}</a>
-                                    @else
-                                        <span class="font-medium text-maxxi-navy">NV —</span>
-                                    @endif
-                                    · {{ $item['customer'] }}
-                                </span>
-                                <span class="font-semibold tabular-nums text-gray-700">{{ $item['quantity'] }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endforeach
-        </div>
+                        {{-- Tarjetas (móvil) --}}
+                        <div class="space-y-3 md:hidden print:hidden">
+                            @foreach ($group['rows'] as $row)
+                                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="mb-0 font-semibold text-gray-800">{{ $row['product'] }}</p>
+                                            <p class="mb-0 mt-0.5 text-sm text-gray-500">{{ $row['unit'] }} (x{{ $row['factor'] }} {{ $row['base_unit_symbol'] }})</p>
+                                        </div>
+                                        <span class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $group['badge'] }}">{{ $group['title'] }}</span>
+                                    </div>
+
+                                    <div class="mt-3 rounded-lg bg-maxxi-orange/10 px-3 py-2">
+                                        <p class="mb-0 text-[11px] font-semibold uppercase tracking-wide text-maxxi-orange-dark">Cantidad a preparar</p>
+                                        <p class="mb-0 mt-0.5 text-lg font-bold tabular-nums text-gray-800">{{ $formatQuantity($row['total']) }} {{ $pluralize($row['unit'], $row['total']) }}</p>
+                                    </div>
+
+                                    <ul class="mb-0 mt-3 list-none space-y-1 p-0">
+                                        @foreach ($row['breakdown'] as $item)
+                                            <li class="flex items-center justify-between gap-3 text-xs text-gray-500">
+                                                <span>
+                                                    @if ($item['sale_note_id'])
+                                                        <a href="{{ route('sale-notes.show', $item['sale_note_id']) }}" class="font-medium text-maxxi-navy hover:text-maxxi-orange">NV #{{ $item['sale_note_id'] }}</a>
+                                                    @else
+                                                        <span class="font-medium text-maxxi-navy">NV —</span>
+                                                    @endif
+                                                    · {{ $item['customer'] }}
+                                                </span>
+                                                <span class="font-semibold tabular-nums text-gray-700">{{ $formatQuantity($item['quantity']) }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
+            @endif
+        @endforeach
     @endif
 
     <style>

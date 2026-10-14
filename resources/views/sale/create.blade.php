@@ -206,7 +206,11 @@
                     @error('cash')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
-                    <button type="button" id="cash-full-payment" class="{{ $botones['secundario'] }} mt-2 w-full">
+                    <button type="button" id="cash-full-payment"
+                            class="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-300 bg-gradient-to-b from-green-50 to-green-100 px-3 py-2 text-sm font-semibold text-green-700 shadow-sm transition hover:from-green-100 hover:to-green-200 hover:shadow focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-1 active:scale-[0.98]">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
                         Pago completo
                     </button>
                 </div>
@@ -220,6 +224,13 @@
                     @error('qr')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <button type="button" id="qr-full-payment"
+                            class="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-blue-300 bg-gradient-to-b from-blue-50 to-blue-100 px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:from-blue-100 hover:to-blue-200 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 active:scale-[0.98]">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                        Pago completo
+                    </button>
                 </div>
             </div>
 
@@ -1081,13 +1092,23 @@
                 });
             }
 
-            // "Pago completo": coloca en efectivo el total calculado.
-            var fullPaymentButton = document.getElementById('cash-full-payment');
+            // "Pago completo": coloca el total calculado en el medio elegido
+            // (efectivo o QR).
+            var cashFullPaymentButton = document.getElementById('cash-full-payment');
+            var qrFullPaymentButton = document.getElementById('qr-full-payment');
 
-            if (fullPaymentButton) {
-                fullPaymentButton.addEventListener('click', function () {
+            if (cashFullPaymentButton) {
+                cashFullPaymentButton.addEventListener('click', function () {
                     var amounts = computeAmounts();
                     cashInput.value = amounts.total.toFixed(1);
+                    render();
+                });
+            }
+
+            if (qrFullPaymentButton) {
+                qrFullPaymentButton.addEventListener('click', function () {
+                    var amounts = computeAmounts();
+                    qrInput.value = amounts.total.toFixed(1);
                     render();
                 });
             }

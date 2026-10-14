@@ -13,9 +13,18 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $products = Product::with('baseUnit')->orderBy('name')->get();
+        $perPage = (int) $request->input('per_page', 15);
+
+        if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
+        $products = Product::with(['baseUnit', 'presentations.unit'])
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return view('product.index', compact('products'));
     }
@@ -25,7 +34,7 @@ class ProductController extends Controller
      */
     public function create(): View
     {
-        $units = Unit::orderBy('name')->get();
+        $units = Unit::where('active', true)->orderBy('name')->get();
 
         return view('product.create', compact('units'));
     }
@@ -63,7 +72,7 @@ class ProductController extends Controller
      */
     public function edit(Product $product): View
     {
-        $units = Unit::orderBy('name')->get();
+        $units = Unit::where('active', true)->orderBy('name')->get();
 
         return view('product.edit', compact('product', 'units'));
     }

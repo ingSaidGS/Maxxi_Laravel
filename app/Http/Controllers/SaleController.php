@@ -20,9 +20,22 @@ class SaleController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $sales = Sale::with('user')->orderByDesc('sold_at')->get();
+        $today = now()->startOfDay();
+
+        $perPage = (int) $request->input('per_page', 15);
+
+        if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
+        $sales = Sale::with('user')
+            ->where('sold_at', '>=', $today)
+            ->where('sold_at', '<', $today->copy()->addDay())
+            ->orderByDesc('sold_at')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return view('sale.index', compact('sales'));
     }
@@ -37,6 +50,9 @@ class SaleController extends Controller
         $presentations = ProductPresentation::with(['product.baseUnit', 'unit'])
             ->where('sale_enable', true)
             ->where('active', true)
+            ->whereHas('product', function ($query) {
+                $query->where('active', true);
+            })
             ->orderBy('id')
             ->get()
             ->map(function (ProductPresentation $presentation): array {

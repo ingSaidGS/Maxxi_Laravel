@@ -105,9 +105,9 @@
                 <div>
                     <label for="sale-filter-status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
                     <select id="sale-filter-status" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
-                        <option value="pagada" selected>Pagadas</option>
+                        <option value="todos" selected>Todos</option>
+                        <option value="pagada">Pagadas</option>
                         <option value="fiada">Fiadas</option>
-                        <option value="todos">Todos</option>
                     </select>
                 </div>
                 <div class="flex flex-col justify-end gap-2 sm:flex-row sm:flex-wrap sm:items-end">
@@ -310,6 +310,38 @@
             </div>
         </div>
 
+        @if ($sales->hasPages() || $sales->total() > 0)
+            <div class="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                    <p class="mb-0 text-sm text-gray-500">
+                        Mostrando {{ $sales->firstItem() }}–{{ $sales->lastItem() }} de {{ $sales->total() }} ventas
+                    </p>
+                    <form method="GET" action="{{ route('sales.index') }}" class="flex items-center gap-2 text-sm text-gray-600">
+                        @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                            @if (is_array($value))
+                                @foreach ($value as $v)
+                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                @endforeach
+                            @else
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                        <label for="sale-per-page" class="font-medium text-gray-700">Mostrar</label>
+                        <select id="sale-per-page" name="per_page" onchange="this.form.submit()"
+                                class="rounded-lg border-gray-300 py-1 pl-2 pr-8 text-sm shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                            @foreach ([10, 15, 25, 50, 100] as $option)
+                                <option value="{{ $option }}" @selected((int) request('per_page', 15) === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        <span>por página</span>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    {{ $sales->links() }}
+                </div>
+            </div>
+        @endif
+
         {{-- Sin resultados para el filtro --}}
         <div id="sale-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
@@ -494,7 +526,7 @@
                     if (fromInput) fromInput.value = '';
                     if (toInput) toInput.value = '';
                     if (searchInput) searchInput.value = '';
-                    if (statusSelect) statusSelect.value = 'pagada';
+                    if (statusSelect) statusSelect.value = 'todos';
                     applyFilters();
                 });
             });

@@ -107,7 +107,7 @@
         foreach ($sale->saleDetails as $detail) {
             $whatsappLines[] = '- '.$quantityLabel($detail)
                 .' · '.($detail->presentation?->product?->name ?? '—')
-                .' · '.$money($detail->unit_price).' c/u'
+                .' · Bs. '.$money($detail->unit_price).' c/u'
                 .' = Bs. '.$money($detail->subtotal);
         }
     }
@@ -199,6 +199,76 @@
         </div>
     @endif
 
+    {{-- Montos clave: información prioritaria de la venta --}}
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        {{-- Total --}}
+        <div class="rounded-xl border border-maxxi-orange/30 bg-maxxi-orange/5 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide text-maxxi-orange-dark">Total</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-orange/15 text-maxxi-orange-dark" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25V13.5Zm0 2.25h.008v.008H8.25v-.008Zm0 2.25h.008v.008H8.25V18Zm2.498-6.75h.007v.008h-.007v-.008Zm0 2.25h.007v.008h-.007V13.5Zm0 2.25h.007v.008h-.007v-.008Zm0 2.25h.007v.008h-.007V18Zm2.504-6.75h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V13.5Zm0 2.25h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V18Zm2.498-6.75h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V13.5ZM8.25 6h7.5v2.25h-7.5V6ZM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0 0 12 2.25Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-maxxi-orange-dark">Bs. {{ $sale->total }}</p>
+        </div>
+
+        {{-- Descuento --}}
+        <div class="rounded-xl border border-maxxi-navy/20 bg-maxxi-navy/5 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide text-maxxi-navy">Descuento</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-maxxi-navy">Bs. {{ $sale->sale_discount }}</p>
+        </div>
+
+        {{-- Efectivo --}}
+        <div class="rounded-xl border border-green-200 bg-green-50/60 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide text-green-600">Efectivo</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-green-700">Bs. {{ $sale->cash }}</p>
+        </div>
+
+        {{-- QR --}}
+        <div class="rounded-xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide text-blue-600">QR</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-blue-700">Bs. {{ $sale->qr }}</p>
+        </div>
+
+        {{-- Fiado (deuda) --}}
+        <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide text-amber-700">Fiado (deuda)</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-amber-800">Bs. {{ $sale->debt }}</p>
+        </div>
+    </div>
+
     {{-- Ficha de detalle --}}
     <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <dl class="mb-0 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -228,30 +298,7 @@
                 </dd>
             </div>
 
-            <div>
-                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Total</dt>
-                <dd class="mt-1 text-sm font-semibold tabular-nums text-gray-800">{{ $sale->total }}</dd>
-            </div>
 
-            <div>
-                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Descuento</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $sale->sale_discount }}</dd>
-            </div>
-
-            <div>
-                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Efectivo</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $sale->cash }}</dd>
-            </div>
-
-            <div>
-                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">QR</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $sale->qr }}</dd>
-            </div>
-
-            <div>
-                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Fiado (deuda)</dt>
-                <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $sale->debt }}</dd>
-            </div>
 
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Usuario (cajero)</dt>

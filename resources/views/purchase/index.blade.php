@@ -221,6 +221,38 @@
             </div>
         </div>
 
+        @if ($purchases->hasPages() || $purchases->total() > 0)
+            <div class="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                    <p class="mb-0 text-sm text-gray-500">
+                        Mostrando {{ $purchases->firstItem() }}–{{ $purchases->lastItem() }} de {{ $purchases->total() }} compras
+                    </p>
+                    <form method="GET" action="{{ route('purchases.index') }}" class="flex items-center gap-2 text-sm text-gray-600">
+                        @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                            @if (is_array($value))
+                                @foreach ($value as $v)
+                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                @endforeach
+                            @else
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                        <label for="purchase-per-page" class="font-medium text-gray-700">Mostrar</label>
+                        <select id="purchase-per-page" name="per_page" onchange="this.form.submit()"
+                                class="rounded-lg border-gray-300 py-1 pl-2 pr-8 text-sm shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                            @foreach ([10, 15, 25, 50, 100] as $option)
+                                <option value="{{ $option }}" @selected((int) request('per_page', 15) === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        <span>por página</span>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    {{ $purchases->links() }}
+                </div>
+            </div>
+        @endif
+
         {{-- Sin resultados para el filtro --}}
         <div id="purchase-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">

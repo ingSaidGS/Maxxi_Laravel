@@ -9,6 +9,56 @@
         'peligro-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
         'exito-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
     ];
+
+    // Formatea montos sin decimales innecesarios: 200 -> "200", 24.5 -> "24.5", 24.05 -> "24.05".
+    $formatAmount = function ($value): ?string {
+        if ($value === null) {
+            return null;
+        }
+
+        $formatted = rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    };
+
+    // Pluralización simple en español: vocal final -> +s, consonante -> +es.
+    $pluralize = fn (string $name, int $count): string => $count === 1
+        ? $name
+        : (preg_match('/[aeiou]$/i', $name) ? $name.'s' : $name.'es');
+
+    // Genera la etiqueta de stock con el mismo formato que la vista show.
+    $getStockLabel = function ($product) use ($pluralize): string {
+        $stock = max(0, (int) $product->stock);
+
+        $purchasePresentation = $product->presentations
+            ->first(fn ($presentation) => $presentation->purchase_enable && $presentation->active);
+
+        $purchaseConversionFactor = (int) ($purchasePresentation?->conversion_factor ?? 0);
+
+        if ($purchaseConversionFactor > 1 && $purchasePresentation?->unit !== null && $product->baseUnit !== null) {
+            $stockPackages = intdiv($stock, $purchaseConversionFactor);
+            $stockLoose = $stock % $purchaseConversionFactor;
+            $stockParts = [];
+
+            if ($stockPackages > 0) {
+                $stockParts[] = $stockPackages.' '.$pluralize($purchasePresentation->unit->name, $stockPackages);
+            }
+
+            if ($stockLoose > 0) {
+                $stockParts[] = $stockLoose.' '.$pluralize($product->baseUnit->name, $stockLoose);
+            }
+
+            return $stockParts !== []
+                ? implode(' y ', $stockParts)
+                : '0 '.$pluralize($product->baseUnit->name, 0);
+        }
+
+        if ($product->baseUnit !== null) {
+            return $stock.' '.$pluralize($product->baseUnit->name, $stock);
+        }
+
+        return (string) $stock;
+    };
 @endphp
 
 <x-layouts.sistema title="Productos">
@@ -137,7 +187,10 @@
                         @foreach ($products as $product)
                             <tr data-href="{{ route('products.show', $product) }}"
                                 data-product-item data-active="{{ $product->active ? '1' : '0' }}"
-                                data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo')) }}"
+                                @php
+                                    $stockLabel = $getStockLabel($product);
+                                @endphp
+                                data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo') . ' ' . $stockLabel) }}"
                                 class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ $product->name }}</td>
                                 <td class="px-4 py-3 text-gray-600">
@@ -148,7 +201,7 @@
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 font-medium tabular-nums text-gray-800">{{ $product->stock }}</td>
+                                <td class="px-4 py-3 font-medium text-gray-800">{{ $stockLabel }}</td>
                                 <td class="px-4 py-3">
                                     @if ($product->active)
                                         <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activo</span>
@@ -189,7 +242,10 @@
                 @foreach ($products as $product)
                     <div data-href="{{ route('products.show', $product) }}"
                          data-product-item data-active="{{ $product->active ? '1' : '0' }}"
-                         data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo')) }}"
+                         @php
+                             $stockLabel = $getStockLabel($product);
+                         @endphp
+                         data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo') . ' ' . $stockLabel) }}"
                          class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -198,7 +254,7 @@
                                     Unidad base:
                                     {{ $product->baseUnit?->name ?? '—' }}@if ($product->baseUnit) ({{ $product->baseUnit->symbol }})@endif
                                 </p>
-                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Stock: <span class="font-medium text-gray-800">{{ $product->stock }}</span></p>
+                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Stock: <span class="font-medium text-gray-800">{{ $stockLabel }}</span></p>
                             </div>
 
                             @if ($product->active)
@@ -232,6 +288,38 @@
                 @endforeach
             </div>
         </div>
+
+        @if ($products->hasPages() || $products->total() > 0)
+            <div class="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                    <p class="mb-0 text-sm text-gray-500">
+                        Mostrando {{ $products->firstItem() }}–{{ $products->lastItem() }} de {{ $products->total() }} productos
+                    </p>
+                    <form method="GET" action="{{ route('products.index') }}" class="flex items-center gap-2 text-sm text-gray-600">
+                        @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                            @if (is_array($value))
+                                @foreach ($value as $v)
+                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                @endforeach
+                            @else
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                        <label for="per_page" class="font-medium text-gray-700">Mostrar</label>
+                        <select id="per_page" name="per_page" onchange="this.form.submit()"
+                                class="rounded-lg border-gray-300 py-1 pl-2 pr-8 text-sm shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                            @foreach ([10, 15, 25, 50, 100] as $option)
+                                <option value="{{ $option }}" @selected((int) request('per_page', 15) === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        <span>por página</span>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    {{ $products->links() }}
+                </div>
+            </div>
+        @endif
 
         {{-- Sin resultados para el filtro --}}
         <div id="product-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">

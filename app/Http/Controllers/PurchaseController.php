@@ -8,6 +8,7 @@ use App\Models\ProductPresentation;
 use App\Models\Purchase;
 use App\Services\PurchaseService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -18,9 +19,22 @@ class PurchaseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $purchases = Purchase::with('user')->orderByDesc('purchased_at')->get();
+        $today = now()->startOfDay();
+
+        $perPage = (int) $request->input('per_page', 15);
+
+        if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
+        $purchases = Purchase::with('user')
+            ->where('purchased_at', '>=', $today)
+            ->where('purchased_at', '<', $today->copy()->addDay())
+            ->orderByDesc('purchased_at')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return view('purchase.index', compact('purchases'));
     }
@@ -114,6 +128,9 @@ class PurchaseController extends Controller
         return ProductPresentation::with(['product.baseUnit', 'unit'])
             ->where('purchase_enable', true)
             ->where('active', true)
+            ->whereHas('product', function ($query) {
+                $query->where('active', true);
+            })
             ->orderBy('id')
             ->get()
             ->map(function (ProductPresentation $presentation): array {

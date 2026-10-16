@@ -5,6 +5,11 @@
         'secundario' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
     ];
+
+    // Detectar filtros activos (el controller ya normalizó los parámetros).
+    $hasFilters = ($filters['date_from'] ?? null) !== null
+        || ($filters['date_to'] ?? null) !== null
+        || trim($filters['search'] ?? '') !== '';
 @endphp
 
 <x-layouts.sistema title="Compras">
@@ -50,73 +55,95 @@
         </div>
     @endif
 
-    @if ($purchases->isEmpty())
-        {{-- Estado vacío --}}
-        <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-            <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-            </svg>
-            <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay compras registradas</p>
-            <p class="mb-0 text-sm text-gray-500">Registra la primera compra para empezar.</p>
-            <a href="{{ route('purchases.create') }}" class="{{ $botones['primario'] }} mt-4">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                </svg>
-                Nueva compra
-            </a>
-        </div>
-    @else
-        {{-- Filtros de búsqueda --}}
-        <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div class="mb-4 flex items-center gap-2">
-                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-                    </svg>
-                </span>
-                <h2 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h2>
-            </div>
+    {{-- Filtros de búsqueda: siempre visibles, aunque hoy no haya compras --}}
+    <form method="GET" action="{{ route('purchases.index') }}" id="purchase-filters-form" class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <input type="hidden" name="per_page" value="{{ (int) request('per_page', 15) }}">
 
-            {{-- Buscador (filtra en cliente) --}}
-            <div class="mb-4">
-                <label for="purchase-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
-                <div class="relative">
+        <div class="mb-4 flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+                </svg>
+            </span>
+            <h2 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h2>
+            @if ($hasFilters)
+                <a href="{{ route('purchases.index') }}" class="ml-auto text-xs font-medium text-maxxi-orange hover:underline">Limpiar filtros</a>
+            @endif
+        </div>
+
+        {{-- Buscador (consulta al servidor: alcanza compras de cualquier fecha) --}}
+        <div class="mb-4">
+            <label for="purchase-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
+            <div class="flex gap-2">
+                <div class="relative flex-1">
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400" aria-hidden="true">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
                     </span>
-                    <input type="search" id="purchase-filter-search" autocomplete="off"
-                           placeholder="Buscar por proveedor, comprobante o usuario…"
+                    <input type="search" id="purchase-filter-search" name="search" value="{{ $filters['search'] }}"
+                           autocomplete="off" placeholder="Buscar por proveedor, comprobante o usuario…"
                            class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                    <label for="purchase-filter-date-from" class="mb-1 block text-sm font-medium text-gray-700">Fecha desde</label>
-                    <input type="date" id="purchase-filter-date-from" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
-                </div>
-                <div>
-                    <label for="purchase-filter-date-to" class="mb-1 block text-sm font-medium text-gray-700">Fecha hasta</label>
-                    <input type="date" id="purchase-filter-date-to" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
-                </div>
-                <div class="flex flex-col justify-end gap-2 sm:flex-row sm:flex-wrap sm:items-end lg:col-span-2">
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" data-purchase-range="today" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Hoy</button>
-                        <button type="button" data-purchase-range="week" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Esta semana</button>
-                        <button type="button" data-purchase-range="month" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Este mes</button>
-                        <button type="button" data-purchase-clear class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Limpiar
-                        </button>
-                    </div>
-                </div>
+                <button type="submit" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
             </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label for="purchase-filter-date-from" class="mb-1 block text-sm font-medium text-gray-700">Fecha desde</label>
+                <input type="date" id="purchase-filter-date-from" name="date_from" value="{{ $filters['date_from'] }}"
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+            </div>
+            <div>
+                <label for="purchase-filter-date-to" class="mb-1 block text-sm font-medium text-gray-700">Fecha hasta</label>
+                <input type="date" id="purchase-filter-date-to" name="date_to" value="{{ $filters['date_to'] }}"
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+            </div>
+            <div class="flex flex-col justify-end gap-2 sm:flex-row sm:flex-wrap sm:items-end lg:col-span-2">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" data-purchase-range="today" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Hoy</button>
+                    <button type="button" data-purchase-range="week" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Esta semana</button>
+                    <button type="button" data-purchase-range="month" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Este mes</button>
+                    <a href="{{ route('purchases.index') }}" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Limpiar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    @if ($purchases->isEmpty())
+        @if ($hasFilters)
+            {{-- Estado vacío: hay filtros activos y no coinciden con ninguna compra --}}
+            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <p class="mb-1 mt-3 font-medium text-gray-700">No hay compras que coincidan con los filtros</p>
+                <p class="mb-0 text-sm text-gray-500">Ajusta el rango de fechas o el término de búsqueda.</p>
+                <a href="{{ route('purchases.index') }}" class="{{ $botones['secundario'] }} mt-4">Limpiar filtros</a>
+            </div>
+        @else
+            {{-- Estado vacío --}}
+            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
+                <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay compras registradas</p>
+                <p class="mb-0 text-sm text-gray-500">Registra la primera compra para empezar.</p>
+                <a href="{{ route('purchases.create') }}" class="{{ $botones['primario'] }} mt-4">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nueva compra
+                </a>
+            </div>
+        @endif
+    @else
         {{-- Resumen filtrado --}}
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -128,7 +155,7 @@
                         </svg>
                     </span>
                 </div>
-                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-gray-800" id="sum-count">0</p>
+                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-gray-800" id="sum-count">{{ $summary['count'] }}</p>
             </div>
 
             <div class="rounded-xl border border-maxxi-orange/30 bg-maxxi-orange/5 p-4 shadow-sm">
@@ -140,7 +167,7 @@
                         </svg>
                     </span>
                 </div>
-                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-maxxi-orange-dark" id="sum-total">Bs. 0.0</p>
+                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-maxxi-orange-dark" id="sum-total">Bs. {{ number_format($summary['total'], 2) }}</p>
             </div>
         </div>
 
@@ -252,111 +279,57 @@
                 </div>
             </div>
         @endif
-
-        {{-- Sin resultados para el filtro --}}
-        <div id="purchase-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-            <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <p class="mb-0 mt-3 text-sm text-gray-500">No hay compras que coincidan con los filtros.</p>
-        </div>
     @endif
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('purchase-filters-form');
+            if (!form) return;
+
             const fromInput = document.getElementById('purchase-filter-date-from');
             const toInput = document.getElementById('purchase-filter-date-to');
-            const searchInput = document.getElementById('purchase-filter-search');
-            const clearButton = document.querySelector('[data-purchase-clear]');
             const rangeButtons = document.querySelectorAll('[data-purchase-range]');
-            const items = document.querySelectorAll('[data-purchase-item]');
-            const list = document.getElementById('purchase-list');
-            const filterEmpty = document.getElementById('purchase-filter-empty');
-            const sumCount = document.getElementById('sum-count');
-            const sumTotal = document.getElementById('sum-total');
+
+            // Los filtros se aplican en el servidor (el resultado no depende de
+            // la página actual). El submit vuelve siempre a la página 1; el
+            // buscador se envía con Enter o el botón "Buscar".
+            function applyFilters() {
+                form.submit();
+            }
 
             function toYmd(d) {
                 return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             }
 
-            function fmt(n) {
-                return 'Bs. ' + n.toFixed(2);
-            }
-
-            function applyFilters() {
-                const from = fromInput?.value || '';
-                const to = toInput?.value || '';
-                const query = (searchInput?.value || '').trim().toLowerCase();
-                let count = 0;
-                let total = 0;
-                const seen = new Set();
-
-                items.forEach((item) => {
-                    const itemDate = item.dataset.purchasedAt || '';
-
-                    let okDate = true;
-                    if (from && itemDate < from) okDate = false;
-                    if (to && itemDate > to) okDate = false;
-
-                    let okSearch = true;
-                    if (query && !(item.dataset.search || '').toLowerCase().includes(query)) okSearch = false;
-
-                    const show = okDate && okSearch;
-                    item.classList.toggle('hidden', !show);
-
-                    // Cada compra se renderiza dos veces (tabla y tarjeta);
-                    // se agrega al resumen una sola vez por id.
-                    const purchaseId = item.dataset.purchaseId || '';
-                    if (show && !seen.has(purchaseId)) {
-                        seen.add(purchaseId);
-                        count++;
-                        total += parseFloat(item.dataset.total || 0);
-                    }
-                });
-
-                if (sumCount) sumCount.textContent = count;
-                if (sumTotal) sumTotal.textContent = fmt(total);
-
-                list?.classList.toggle('hidden', count === 0);
-                filterEmpty?.classList.toggle('hidden', count > 0);
-            }
-
-            function setRange(type) {
-                const today = new Date();
-                let from, to;
-                if (type === 'today') {
-                    from = to = toYmd(today);
-                } else if (type === 'week') {
-                    const day = today.getDay();
-                    const monday = new Date(today);
-                    monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-                    from = toYmd(monday);
-                    to = toYmd(today);
-                } else if (type === 'month') {
-                    from = toYmd(new Date(today.getFullYear(), today.getMonth(), 1));
-                    to = toYmd(today);
-                }
-                if (fromInput) fromInput.value = from;
-                if (toInput) toInput.value = to;
-                applyFilters();
-            }
-
-            fromInput?.addEventListener('input', applyFilters);
-            toInput?.addEventListener('input', applyFilters);
-            searchInput?.addEventListener('input', applyFilters);
+            fromInput?.addEventListener('change', applyFilters);
+            toInput?.addEventListener('change', applyFilters);
 
             rangeButtons.forEach((btn) => {
-                btn.addEventListener('click', () => setRange(btn.dataset.purchaseRange));
-            });
+                btn.addEventListener('click', () => {
+                    const today = new Date();
+                    const type = btn.dataset.purchaseRange;
+                    let from = '';
+                    let to = '';
 
-            clearButton?.addEventListener('click', function () {
-                if (fromInput) fromInput.value = '';
-                if (toInput) toInput.value = '';
-                if (searchInput) searchInput.value = '';
-                applyFilters();
-            });
+                    if (type === 'today') {
+                        from = to = toYmd(today);
+                    } else if (type === 'week') {
+                        const day = today.getDay();
+                        const monday = new Date(today);
+                        monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+                        from = toYmd(monday);
+                        to = toYmd(today);
+                    } else if (type === 'month') {
+                        from = toYmd(new Date(today.getFullYear(), today.getMonth(), 1));
+                        to = toYmd(today);
+                    }
 
-            applyFilters();
+                    if (fromInput) fromInput.value = from;
+                    if (toInput) toInput.value = to;
+
+                    applyFilters();
+                });
+            });
         });
     </script>
 </x-layouts.sistema>

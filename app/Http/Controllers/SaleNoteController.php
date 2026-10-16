@@ -9,7 +9,10 @@ use App\Models\ProductPresentation;
 use App\Models\SaleNote;
 use App\Models\SaleNoteDetail;
 use App\Services\SaleNoteService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -19,19 +22,56 @@ class SaleNoteController extends Controller
 
     /**
      * Display a listing of the resource.
+     *
+     * El listado se filtra en el servidor por fechas ("date_from"/"date_to",
+     * incluyentes y en formato "Y-m-d"), estado y término de búsqueda. La
+     * búsqueda compara sin distinguir mayúsculas ("ilike" de PostgreSQL) contra
+     * el cliente, el teléfono y el nombre del usuario.
+     *
+     * A diferencia de ventas y compras, aquí NO se aplica un rango "de hoy" por
+     * defecto: las notas pendientes de días anteriores deben seguir visibles. El
+     * rango de fechas solo acota el resultado cuando viene indicado.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $saleNotes = SaleNote::with(['user', 'sale'])->orderByDesc('noted_at')->get();
+        $search = $request->query('search', $request->query('q'));
 
-        return view('sale-note.index', compact('saleNotes'));
+        $filters = [
+            'date_from' => $this->sanitizeDateFilter($request->query('date_from')),
+            'date_to' => $this->sanitizeDateFilter($request->query('date_to')),
+            'status' => in_array($request->query('status'), ['pendiente', 'entregada', 'anulada'], true) ? $request->query('status') : null,
+            'search' => is_string($search) ? trim($search) : '',
+        ];
+
+        // Resumen sobre todo el resultado filtrado.
+        $summary = $this->filteredSaleNotes($filters)
+            ->selectRaw(
+                'count(*) as notes_count, coalesce(sum(total), 0) as sum_total,'
+                .' coalesce(sum(case when status = ? then 1 else 0 end), 0) as pending_count',
+                ['pendiente']
+            )
+            ->first();
+
+        $saleNotes = $this->filteredSaleNotes($filters)
+            ->with(['user', 'sale'])
+            ->orderByDesc('noted_at')
+            ->get();
+
+        $summary = [
+            'count' => (int) ($summary->notes_count ?? 0),
+            'total' => (float) ($summary->sum_total ?? 0),
+            'pending' => (int) ($summary->pending_count ?? 0),
+        ];
+
+        return view('sale-note.index', compact('saleNotes', 'filters', 'summary'));
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * Se cargan las presentaciones habilitadas para venta y activas para armar el
-     * carrito. El precio de cada línea es el precio de venta de la presentación.
+     * Se cargan las presentaciones habilitadas para venta, activas y cuyo producto
+     * esté activo para armar el carrito. El precio de cada línea es el precio de
+     * venta de la presentación.
      */
     public function create(): View
     {
@@ -159,6 +199,68 @@ class SaleNoteController extends Controller
     }
 
     /**
+     * Construye la consulta del listado de notas de venta aplicando los filtros.
+     *
+     * No hay rango "de hoy" por defecto: sin filtros se listan todas las notas
+     * (las pendientes de días anteriores deben seguir visibles). El rango de
+     * fechas acota solo cuando viene indicado; "date_from" filtra desde el inicio
+     * del día y "date_to" hasta el final del día (ambos inclusivos). La búsqueda
+     * usa "ilike" (PostgreSQL) para ignorar mayúsculas/minúsculas.
+     *
+     * @param  array{date_from: ?string, date_to: ?string, status: ?string, search: string}  $filters
+     * @return Builder<SaleNote>
+     */
+    protected function filteredSaleNotes(array $filters): Builder
+    {
+        $query = SaleNote::query();
+
+        if ($filters['date_from'] !== null) {
+            $query->where('noted_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
+        }
+
+        if ($filters['date_to'] !== null) {
+            $query->where('noted_at', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+        }
+
+        if ($filters['status'] !== null) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['search'] !== '') {
+            $like = '%'.$filters['search'].'%';
+
+            $query->where(function (Builder $query) use ($like) {
+                $query->where('customer_name', 'ilike', $like)
+                    ->orWhere('customer_phone', 'ilike', $like)
+                    ->orWhereHas('user', fn (Builder $user) => $user->where('name', 'ilike', $like));
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Normaliza un filtro de fecha recibido por query string.
+     *
+     * Devuelve la fecha en formato "Y-m-d" o null si el valor está vacío o no es
+     * una fecha válida; un parámetro corrupto no debe romper el listado.
+     */
+    protected function sanitizeDateFilter(mixed $value): ?string
+    {
+        if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $date->format('Y-m-d') === $value ? $value : null;
+    }
+
+    /**
      * Verifica que la línea pertenezca a la nota indicada.
      */
     protected function ensureDetailBelongsToNote(SaleNote $saleNote, SaleNoteDetail $saleNoteDetail): void
@@ -169,9 +271,11 @@ class SaleNoteController extends Controller
     /**
      * Presentaciones disponibles para venta, listas para el formulario.
      *
-     * Se identifica cada presentación por su unidad + factor de conversión (el
-     * "sizeLabel" es la equivalencia legible, p. ej. "x24 kg") y el importe que se
-     * expone al formulario es el precio de venta de la presentación.
+     * Solo se incluyen presentaciones habilitadas para venta, activas y cuyo
+     * producto también esté activo. Se identifica cada presentación por su unidad +
+     * factor de conversión (el "sizeLabel" es la equivalencia legible, p. ej.
+     * "x24 kg") y el importe que se expone al formulario es el precio de venta de
+     * la presentación.
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -180,6 +284,9 @@ class SaleNoteController extends Controller
         return ProductPresentation::with(['product.baseUnit', 'unit'])
             ->where('sale_enable', true)
             ->where('active', true)
+            ->whereHas('product', function ($query) {
+                $query->where('active', true);
+            })
             ->orderBy('id')
             ->get()
             ->map(function (ProductPresentation $presentation): array {

@@ -195,9 +195,9 @@ Si se necesita volumen aleatorio, crear factories primero.
 
 ```bash
 # Base de datos
-php artisan migrate:fresh --seed   # recrea el esquema y siembra
 php artisan db:seed                # solo siembra (idempotente)
 php artisan migrate:status
+# NO ejecutar `php artisan migrate:fresh`, `php artisan migrate:refresh` o `php artisan migrate:reset` sin permiso explícito del usuario.
 
 # Calidad
 php -l <archivo.php>               # lint de sintaxis

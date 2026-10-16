@@ -7,8 +7,10 @@ use App\Http\Requests\Purchase\UpdatePurchaseRequest;
 use App\Models\ProductPresentation;
 use App\Models\Purchase;
 use App\Services\PurchaseService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -18,25 +20,50 @@ class PurchaseController extends Controller
 
     /**
      * Display a listing of the resource.
+     *
+     * El listado se filtra en el servidor por fechas ("date_from"/"date_to",
+     * incluyentes y en formato "Y-m-d") y término de búsqueda. La búsqueda
+     * compara sin distinguir mayúsculas ("ilike" de PostgreSQL) contra el
+     * proveedor, el número de comprobante y el nombre del usuario.
+     *
+     * Sin ningún filtro activo se muestran las compras de hoy por defecto; en
+     * cuanto hay algún filtro, se busca en todo el histórico para que sea
+     * posible encontrar compras anteriores aunque hoy no haya compras. El rango
+     * de fechas acota siempre el resultado cuando viene indicado.
      */
     public function index(Request $request): View
     {
-        $today = now()->startOfDay();
-
         $perPage = (int) $request->input('per_page', 15);
 
         if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
             $perPage = 15;
         }
 
-        $purchases = Purchase::with('user')
-            ->where('purchased_at', '>=', $today)
-            ->where('purchased_at', '<', $today->copy()->addDay())
+        $search = $request->query('search', $request->query('q'));
+
+        $filters = [
+            'date_from' => $this->sanitizeDateFilter($request->query('date_from')),
+            'date_to' => $this->sanitizeDateFilter($request->query('date_to')),
+            'search' => is_string($search) ? trim($search) : '',
+        ];
+
+        // Resumen sobre todo el resultado filtrado (no solo la página actual).
+        $summary = $this->filteredPurchases($filters)
+            ->selectRaw('count(*) as purchases_count, coalesce(sum(total), 0) as sum_total')
+            ->first();
+
+        $purchases = $this->filteredPurchases($filters)
+            ->with('user')
             ->orderByDesc('purchased_at')
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('purchase.index', compact('purchases'));
+        $summary = [
+            'count' => (int) ($summary->purchases_count ?? 0),
+            'total' => (float) ($summary->sum_total ?? 0),
+        ];
+
+        return view('purchase.index', compact('purchases', 'filters', 'summary'));
     }
 
     /**
@@ -112,6 +139,76 @@ class PurchaseController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    /**
+     * Construye la consulta del listado de compras aplicando los filtros.
+     *
+     * - Solo se limita al día de hoy cuando no hay ningún filtro activo (es el
+     *   valor por defecto del listado); con cualquier filtro activo se recorre
+     *   el histórico completo y el rango de fechas acota si viene indicado.
+     * - "date_from" filtra desde el inicio del día y "date_to" hasta el final
+     *   del día (ambos son inclusivos).
+     * - La búsqueda usa "ilike" (PostgreSQL) para ignorar mayúsculas/minúsculas.
+     *
+     * @param  array{date_from: ?string, date_to: ?string, search: string}  $filters
+     * @return Builder<Purchase>
+     */
+    protected function filteredPurchases(array $filters): Builder
+    {
+        $query = Purchase::query();
+
+        $hasFilter = $filters['date_from'] !== null
+            || $filters['date_to'] !== null
+            || $filters['search'] !== '';
+
+        if (! $hasFilter) {
+            $today = now()->startOfDay();
+
+            $query->where('purchased_at', '>=', $today)
+                ->where('purchased_at', '<', $today->copy()->addDay());
+        } else {
+            if ($filters['date_from'] !== null) {
+                $query->where('purchased_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
+            }
+
+            if ($filters['date_to'] !== null) {
+                $query->where('purchased_at', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+            }
+        }
+
+        if ($filters['search'] !== '') {
+            $like = '%'.$filters['search'].'%';
+
+            $query->where(function (Builder $query) use ($like) {
+                $query->where('supplier', 'ilike', $like)
+                    ->orWhere('voucher_number', 'ilike', $like)
+                    ->orWhereHas('user', fn (Builder $user) => $user->where('name', 'ilike', $like));
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Normaliza un filtro de fecha recibido por query string.
+     *
+     * Devuelve la fecha en formato "Y-m-d" o null si el valor está vacío o no
+     * es una fecha válida; un parámetro corrupto no debe romper el listado.
+     */
+    protected function sanitizeDateFilter(mixed $value): ?string
+    {
+        if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $date->format('Y-m-d') === $value ? $value : null;
     }
 
     /**

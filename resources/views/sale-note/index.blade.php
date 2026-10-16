@@ -12,6 +12,12 @@
         'entregada' => ['label' => 'Entregada', 'class' => 'bg-green-100 text-green-700'],
         'anulada' => ['label' => 'Anulada', 'class' => 'bg-gray-200 text-gray-600'],
     ];
+
+    // Detectar filtros activos (el controller ya normalizó los parámetros).
+    $hasFilters = ($filters['date_from'] ?? null) !== null
+        || ($filters['date_to'] ?? null) !== null
+        || ($filters['status'] ?? null) !== null
+        || trim($filters['search'] ?? '') !== '';
 @endphp
 
 <x-layouts.sistema title="Notas de venta">
@@ -57,77 +63,97 @@
         </div>
     @endif
 
-    @if ($saleNotes->isEmpty())
-        {{-- Estado vacío --}}
-        <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-            <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay notas de venta</p>
-            <p class="mb-0 text-sm text-gray-500">Registra la primera nota para empezar.</p>
-            <a href="{{ route('sale-notes.create') }}" class="{{ $botones['primario'] }} mt-4">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+    {{-- Filtros de búsqueda: siempre visibles, aunque no haya notas --}}
+    <form method="GET" action="{{ route('sale-notes.index') }}" id="sale-note-filters-form" class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <div class="mb-4 flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
                 </svg>
-                Nueva nota
-            </a>
+            </span>
+            <h2 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h2>
+            @if ($hasFilters)
+                <a href="{{ route('sale-notes.index') }}" class="ml-auto text-xs font-medium text-maxxi-orange hover:underline">Limpiar filtros</a>
+            @endif
         </div>
-    @else
-        {{-- Filtros --}}
-        <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div class="mb-4 flex items-center gap-2">
-                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
-                    </svg>
-                </span>
-                <h2 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h2>
-            </div>
 
-            {{-- Buscador (filtra en cliente) --}}
-            <div class="mb-4">
-                <label for="sale-note-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
-                <div class="relative">
+        {{-- Buscador (consulta al servidor: alcanza notas de cualquier fecha) --}}
+        <div class="mb-4">
+            <label for="sale-note-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
+            <div class="flex gap-2">
+                <div class="relative flex-1">
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400" aria-hidden="true">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
                     </span>
-                    <input type="search" id="sale-note-filter-search" autocomplete="off"
-                           placeholder="Buscar por cliente, teléfono o usuario…"
+                    <input type="search" id="sale-note-filter-search" name="search" value="{{ $filters['search'] }}"
+                           autocomplete="off" placeholder="Buscar por cliente, teléfono o usuario…"
                            class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                    <label for="sale-note-filter-date-from" class="mb-1 block text-sm font-medium text-gray-700">Fecha desde</label>
-                    <input type="date" id="sale-note-filter-date-from" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
-                </div>
-                <div>
-                    <label for="sale-note-filter-date-to" class="mb-1 block text-sm font-medium text-gray-700">Fecha hasta</label>
-                    <input type="date" id="sale-note-filter-date-to" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
-                </div>
-                <div>
-                    <label for="sale-note-filter-status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
-                    <select id="sale-note-filter-status" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
-                        <option value="pendiente">Pendientes</option>
-                        <option value="entregada">Entregadas</option>
-                        <option value="anulada">Anuladas</option>
-                        <option value="todas" selected>Todas</option>
-                    </select>
-                </div>
-                <div class="flex flex-col justify-end gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" data-sale-note-range="today" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Hoy</button>
-                        <button type="button" data-sale-note-range="week" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Esta semana</button>
-                        <button type="button" data-sale-note-range="month" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Este mes</button>
-                        <button type="button" data-sale-note-clear class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Limpiar</button>
-                    </div>
-                </div>
+                <button type="submit" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
             </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label for="sale-note-filter-date-from" class="mb-1 block text-sm font-medium text-gray-700">Fecha desde</label>
+                <input type="date" id="sale-note-filter-date-from" name="date_from" value="{{ $filters['date_from'] }}"
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+            </div>
+            <div>
+                <label for="sale-note-filter-date-to" class="mb-1 block text-sm font-medium text-gray-700">Fecha hasta</label>
+                <input type="date" id="sale-note-filter-date-to" name="date_to" value="{{ $filters['date_to'] }}"
+                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+            </div>
+            <div>
+                <label for="sale-note-filter-status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
+                <select id="sale-note-filter-status" name="status" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                    <option value="pendiente" @selected($filters['status'] === 'pendiente')>Pendientes</option>
+                    <option value="entregada" @selected($filters['status'] === 'entregada')>Entregadas</option>
+                    <option value="anulada" @selected($filters['status'] === 'anulada')>Anuladas</option>
+                    <option value="" @selected(! $filters['status'])>Todas</option>
+                </select>
+            </div>
+            <div class="flex flex-col justify-end gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" data-sale-note-range="today" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Hoy</button>
+                    <button type="button" data-sale-note-range="week" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Esta semana</button>
+                    <button type="button" data-sale-note-range="month" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Este mes</button>
+                    <a href="{{ route('sale-notes.index') }}" class="{{ $botones['secundario'] }} px-2.5 py-1.5 text-xs sm:text-sm">Limpiar</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    @if ($saleNotes->isEmpty())
+        @if ($hasFilters)
+            {{-- Estado vacío: hay filtros activos y no coinciden con ninguna nota --}}
+            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <p class="mb-1 mt-3 font-medium text-gray-700">No hay notas que coincidan con los filtros</p>
+                <p class="mb-0 text-sm text-gray-500">Ajusta el rango de fechas, el estado o el término de búsqueda.</p>
+                <a href="{{ route('sale-notes.index') }}" class="{{ $botones['secundario'] }} mt-4">Limpiar filtros</a>
+            </div>
+        @else
+            {{-- Estado vacío --}}
+            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay notas de venta</p>
+                <p class="mb-0 text-sm text-gray-500">Registra la primera nota para empezar.</p>
+                <a href="{{ route('sale-notes.create') }}" class="{{ $botones['primario'] }} mt-4">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nueva nota
+                </a>
+            </div>
+        @endif
+    @else
         {{-- Resumen filtrado --}}
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -139,7 +165,7 @@
                         </svg>
                     </span>
                 </div>
-                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-gray-800" id="sum-count">0</p>
+                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-gray-800" id="sum-count">{{ $summary['count'] }}</p>
             </div>
 
             <div class="rounded-xl border border-maxxi-orange/30 bg-maxxi-orange/5 p-4 shadow-sm">
@@ -151,7 +177,7 @@
                         </svg>
                     </span>
                 </div>
-                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-maxxi-orange-dark" id="sum-total">Bs. 0.0</p>
+                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-maxxi-orange-dark" id="sum-total">Bs. {{ number_format($summary['total'], 1) }}</p>
             </div>
 
             <div class="rounded-xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm">
@@ -163,7 +189,7 @@
                         </svg>
                     </span>
                 </div>
-                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-blue-600" id="sum-pending">0</p>
+                <p class="mb-0 mt-2 text-xl font-bold tabular-nums text-blue-600" id="sum-pending">{{ $summary['pending'] }}</p>
             </div>
         </div>
 
@@ -257,86 +283,40 @@
             </div>
         </div>
 
-        {{-- Sin resultados para el filtro --}}
-        <div id="sale-note-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-            <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <p class="mb-0 mt-3 text-sm text-gray-500">No hay notas que coincidan con los filtros.</p>
-        </div>
+    @endif
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const fromInput = document.getElementById('sale-note-filter-date-from');
-                const toInput = document.getElementById('sale-note-filter-date-to');
-                const statusSelect = document.getElementById('sale-note-filter-status');
-                const searchInput = document.getElementById('sale-note-filter-search');
-                const rangeButtons = document.querySelectorAll('[data-sale-note-range]');
-                const clearButton = document.querySelectorAll('[data-sale-note-clear]');
-                const items = document.querySelectorAll('[data-sale-note-item]');
-                const list = document.getElementById('sale-note-list');
-                const filterEmpty = document.getElementById('sale-note-filter-empty');
-                const sumCount = document.getElementById('sum-count');
-                const sumTotal = document.getElementById('sum-total');
-                const sumPending = document.getElementById('sum-pending');
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('sale-note-filters-form');
+            if (!form) return;
 
-                function toYmd(d) {
-                    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                }
+            const fromInput = document.getElementById('sale-note-filter-date-from');
+            const toInput = document.getElementById('sale-note-filter-date-to');
+            const statusSelect = document.getElementById('sale-note-filter-status');
+            const rangeButtons = document.querySelectorAll('[data-sale-note-range]');
 
-                function fmt(n) {
-                    return 'Bs. ' + (Math.round(n * 10) / 10).toFixed(1);
-                }
+            // Los filtros se aplican en el servidor (el resultado no depende
+            // del HTML cargado). El submit vuelve siempre a la página 1; el
+            // buscador se envía con Enter o el botón "Buscar".
+            function applyFilters() {
+                form.submit();
+            }
 
-                function applyFilters() {
-                    const from = fromInput?.value || '';
-                    const to = toInput?.value || '';
-                    const status = statusSelect?.value || 'todas';
-                    const query = (searchInput?.value || '').trim().toLowerCase();
-                    let count = 0;
-                    let total = 0;
-                    let pending = 0;
-                    const seen = new Set();
+            function toYmd(d) {
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
 
-                    items.forEach((item) => {
-                        const itemDate = item.dataset.notedAt || '';
-                        const itemStatus = item.dataset.status || '';
+            fromInput?.addEventListener('change', applyFilters);
+            toInput?.addEventListener('change', applyFilters);
+            statusSelect?.addEventListener('change', applyFilters);
 
-                        let okDate = true;
-                        if (from && itemDate < from) okDate = false;
-                        if (to && itemDate > to) okDate = false;
-
-                        let okStatus = true;
-                        if (status !== 'todas' && itemStatus !== status) okStatus = false;
-
-                        let okSearch = true;
-                        if (query && !(item.dataset.search || '').toLowerCase().includes(query)) okSearch = false;
-
-                        const show = okDate && okStatus && okSearch;
-                        item.classList.toggle('hidden', !show);
-
-                        // Cada nota se renderiza dos veces (tabla y tarjeta);
-                        // se agrega al resumen una sola vez por id.
-                        const noteId = item.dataset.saleNoteId || '';
-                        if (show && !seen.has(noteId)) {
-                            seen.add(noteId);
-                            count++;
-                            total += parseFloat(item.dataset.total || 0);
-                            if (itemStatus === 'pendiente') pending++;
-                        }
-                    });
-
-                    if (sumCount) sumCount.textContent = count;
-                    if (sumTotal) sumTotal.textContent = fmt(total);
-                    if (sumPending) sumPending.textContent = pending;
-
-                    list?.classList.toggle('hidden', count === 0);
-                    filterEmpty?.classList.toggle('hidden', count > 0);
-                }
-
-                function setRange(type) {
+            rangeButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
                     const today = new Date();
-                    let from, to;
+                    const type = btn.dataset.saleNoteRange;
+                    let from = '';
+                    let to = '';
+
                     if (type === 'today') {
                         from = to = toYmd(today);
                     } else if (type === 'week') {
@@ -349,32 +329,13 @@
                         from = toYmd(new Date(today.getFullYear(), today.getMonth(), 1));
                         to = toYmd(today);
                     }
+
                     if (fromInput) fromInput.value = from;
                     if (toInput) toInput.value = to;
+
                     applyFilters();
-                }
-
-                fromInput?.addEventListener('input', applyFilters);
-                toInput?.addEventListener('input', applyFilters);
-                statusSelect?.addEventListener('change', applyFilters);
-                searchInput?.addEventListener('input', applyFilters);
-
-                rangeButtons.forEach((btn) => {
-                    btn.addEventListener('click', () => setRange(btn.dataset.saleNoteRange));
                 });
-
-                clearButton.forEach((btn) => {
-                    btn.addEventListener('click', () => {
-                        if (fromInput) fromInput.value = '';
-                        if (toInput) toInput.value = '';
-                        if (searchInput) searchInput.value = '';
-                        if (statusSelect) statusSelect.value = 'todas';
-                        applyFilters();
-                    });
-                });
-
-                applyFilters();
             });
-        </script>
-    @endif
+        });
+    </script>
 </x-layouts.sistema>

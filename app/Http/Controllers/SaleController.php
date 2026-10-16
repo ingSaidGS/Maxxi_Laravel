@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\ProductPresentation;
 use App\Models\Sale;
 use App\Services\StockService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,25 +21,58 @@ class SaleController extends Controller
 
     /**
      * Display a listing of the resource.
+     *
+     * El listado se filtra en el servidor por fechas ("date_from"/"date_to",
+     * incluyentes y en formato "Y-m-d"), estado y término de búsqueda. La
+     * búsqueda compara sin distinguir mayúsculas ("ilike" de PostgreSQL) contra
+     * el cliente, el teléfono y el nombre del usuario.
+     *
+     * Sin ningún filtro activo se muestran las ventas de hoy por defecto; en
+     * cuanto hay algún filtro, se busca en todo el histórico para que sea
+     * posible encontrar ventas anteriores aunque hoy no haya ventas. El rango de
+     * fechas acota siempre el resultado cuando viene indicado.
      */
     public function index(Request $request): View
     {
-        $today = now()->startOfDay();
-
         $perPage = (int) $request->input('per_page', 15);
 
         if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
             $perPage = 15;
         }
 
-        $sales = Sale::with('user')
-            ->where('sold_at', '>=', $today)
-            ->where('sold_at', '<', $today->copy()->addDay())
+        $search = $request->query('search', $request->query('q'));
+
+        $filters = [
+            'date_from' => $this->sanitizeDateFilter($request->query('date_from')),
+            'date_to' => $this->sanitizeDateFilter($request->query('date_to')),
+            'status' => in_array($request->query('status'), ['pagada', 'fiada'], true) ? $request->query('status') : null,
+            'search' => is_string($search) ? trim($search) : '',
+        ];
+
+        // Resumen sobre todo el resultado filtrado (no solo la página actual).
+        $summary = $this->filteredSales($filters)
+            ->selectRaw(
+                'count(*) as sales_count, coalesce(sum(total), 0) as sum_total,'
+                .' coalesce(sum(cash), 0) as sum_cash, coalesce(sum(qr), 0) as sum_qr,'
+                .' coalesce(sum(debt), 0) as sum_debt'
+            )
+            ->first();
+
+        $sales = $this->filteredSales($filters)
+            ->with('user')
             ->orderByDesc('sold_at')
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('sale.index', compact('sales'));
+        $summary = [
+            'count' => (int) ($summary->sales_count ?? 0),
+            'total' => (float) ($summary->sum_total ?? 0),
+            'cash' => (float) ($summary->sum_cash ?? 0),
+            'qr' => (float) ($summary->sum_qr ?? 0),
+            'debt' => (float) ($summary->sum_debt ?? 0),
+        ];
+
+        return view('sale.index', compact('sales', 'filters', 'summary'));
     }
 
     /**
@@ -285,6 +320,81 @@ class SaleController extends Controller
         return response()->json([
             'message' => 'Las ventas no se pueden eliminar.',
         ], 405);
+    }
+
+    /**
+     * Construye la consulta del listado de ventas aplicando los filtros.
+     *
+     * - Solo se limita al día de hoy cuando no hay ningún filtro activo (es el
+     *   valor por defecto del listado); con cualquier filtro activo se recorre
+     *   el histórico completo y el rango de fechas acota si viene indicado.
+     * - "date_from" filtra desde el inicio del día y "date_to" hasta el final
+     *   del día (ambos son inclusivos).
+     * - La búsqueda usa "ilike" (PostgreSQL) para ignorar mayúsculas/minúsculas.
+     *
+     * @param  array{date_from: ?string, date_to: ?string, status: ?string, search: string}  $filters
+     * @return Builder<Sale>
+     */
+    protected function filteredSales(array $filters): Builder
+    {
+        $query = Sale::query();
+
+        $hasFilter = $filters['date_from'] !== null
+            || $filters['date_to'] !== null
+            || $filters['status'] !== null
+            || $filters['search'] !== '';
+
+        if (! $hasFilter) {
+            $today = now()->startOfDay();
+
+            $query->where('sold_at', '>=', $today)
+                ->where('sold_at', '<', $today->copy()->addDay());
+        } else {
+            if ($filters['date_from'] !== null) {
+                $query->where('sold_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
+            }
+
+            if ($filters['date_to'] !== null) {
+                $query->where('sold_at', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+            }
+        }
+
+        if ($filters['status'] !== null) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['search'] !== '') {
+            $like = '%'.$filters['search'].'%';
+
+            $query->where(function (Builder $query) use ($like) {
+                $query->where('customer_name', 'ilike', $like)
+                    ->orWhere('customer_phone', 'ilike', $like)
+                    ->orWhereHas('user', fn (Builder $user) => $user->where('name', 'ilike', $like));
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Normaliza un filtro de fecha recibido por query string.
+     *
+     * Devuelve la fecha en formato "Y-m-d" o null si el valor está vacío o no
+     * es una fecha válida; un parámetro corrupto no debe romper el listado.
+     */
+    protected function sanitizeDateFilter(mixed $value): ?string
+    {
+        if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $date->format('Y-m-d') === $value ? $value : null;
     }
 
     /**

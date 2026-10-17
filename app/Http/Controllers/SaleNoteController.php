@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaleNote\DeliverSaleNoteRequest;
+use App\Http\Requests\SaleNote\StoreSaleNoteDetailRequest;
 use App\Http\Requests\SaleNote\StoreSaleNoteRequest;
+use App\Http\Requests\SaleNote\UpdateSaleNoteDetailQuantityRequest;
 use App\Http\Requests\SaleNote\UpdateSaleNoteRequest;
 use App\Models\ProductPresentation;
 use App\Models\SaleNote;
@@ -28,12 +30,19 @@ class SaleNoteController extends Controller
      * búsqueda compara sin distinguir mayúsculas ("ilike" de PostgreSQL) contra
      * el cliente, el teléfono y el nombre del usuario.
      *
-     * A diferencia de ventas y compras, aquí NO se aplica un rango "de hoy" por
-     * defecto: las notas pendientes de días anteriores deben seguir visibles. El
-     * rango de fechas solo acota el resultado cuando viene indicado.
+     * Sin ningún filtro activo se muestran las notas de hoy por defecto (igual
+     * que en ventas); en cuanto hay algún filtro, se busca en todo el histórico
+     * para poder encontrar notas anteriores aunque hoy no haya. El rango de
+     * fechas acota siempre el resultado cuando viene indicado.
      */
     public function index(Request $request): View
     {
+        $perPage = (int) $request->input('per_page', 15);
+
+        if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
         $search = $request->query('search', $request->query('q'));
 
         $filters = [
@@ -43,7 +52,7 @@ class SaleNoteController extends Controller
             'search' => is_string($search) ? trim($search) : '',
         ];
 
-        // Resumen sobre todo el resultado filtrado.
+        // Resumen sobre todo el resultado filtrado (no solo la página actual).
         $summary = $this->filteredSaleNotes($filters)
             ->selectRaw(
                 'count(*) as notes_count, coalesce(sum(total), 0) as sum_total,'
@@ -55,7 +64,8 @@ class SaleNoteController extends Controller
         $saleNotes = $this->filteredSaleNotes($filters)
             ->with(['user', 'sale'])
             ->orderByDesc('noted_at')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         $summary = [
             'count' => (int) ($summary->notes_count ?? 0),
@@ -97,6 +107,9 @@ class SaleNoteController extends Controller
 
     /**
      * Display the specified resource.
+     *
+     * Además de las líneas, se cargan las presentaciones vendibles para el modal
+     * "Agregar producto" (mismo listado que el alta de notas).
      */
     public function show(SaleNote $saleNote): View
     {
@@ -108,7 +121,9 @@ class SaleNoteController extends Controller
             'saleNoteDetails.presentation.unit',
         ]);
 
-        return view('sale-note.show', compact('saleNote'));
+        $presentations = $this->saleablePresentations();
+
+        return view('sale-note.show', compact('saleNote', 'presentations'));
     }
 
     /**
@@ -199,11 +214,49 @@ class SaleNoteController extends Controller
     }
 
     /**
+     * Agrega una presentación a una nota pendiente.
+     *
+     * Reutiliza la misma validación de presentaciones vendibles que el alta de
+     * notas. Si la presentación ya está activa en la nota, la cantidad se suma a
+     * esa línea (ver SaleNoteService::addDetail()).
+     */
+    public function storeDetail(StoreSaleNoteDetailRequest $request, SaleNote $saleNote): RedirectResponse
+    {
+        $data = $request->dataForPersistence();
+
+        $this->saleNotes->addDetail($saleNote, $data['presentation_id'], $data['quantity']);
+
+        return redirect()
+            ->route('sale-notes.show', $saleNote)
+            ->with('status', 'Producto agregado a la nota.');
+    }
+
+    /**
+     * Actualiza la cantidad de una línea de la nota y recalcula el total.
+     *
+     * Solo se permite en notas pendientes: el estado se valida en el servicio
+     * (ensurePending()) y la línea debe pertenecer a la nota.
+     */
+    public function updateDetailQuantity(
+        UpdateSaleNoteDetailQuantityRequest $request,
+        SaleNote $saleNote,
+        SaleNoteDetail $saleNoteDetail
+    ): RedirectResponse {
+        $this->ensureDetailBelongsToNote($saleNote, $saleNoteDetail);
+
+        $this->saleNotes->updateDetailQuantity($saleNoteDetail, $request->dataForPersistence()['quantity']);
+
+        return redirect()
+            ->route('sale-notes.show', $saleNote)
+            ->with('status', 'Cantidad actualizada correctamente.');
+    }
+
+    /**
      * Construye la consulta del listado de notas de venta aplicando los filtros.
      *
-     * No hay rango "de hoy" por defecto: sin filtros se listan todas las notas
-     * (las pendientes de días anteriores deben seguir visibles). El rango de
-     * fechas acota solo cuando viene indicado; "date_from" filtra desde el inicio
+     * Mismo criterio que ventas: sin ningún filtro se acota a las notas de hoy
+     * (desde el inicio del día hasta el inicio del día siguiente); con cualquier
+     * filtro se busca en todo el histórico. "date_from" filtra desde el inicio
      * del día y "date_to" hasta el final del día (ambos inclusivos). La búsqueda
      * usa "ilike" (PostgreSQL) para ignorar mayúsculas/minúsculas.
      *
@@ -214,12 +267,24 @@ class SaleNoteController extends Controller
     {
         $query = SaleNote::query();
 
-        if ($filters['date_from'] !== null) {
-            $query->where('noted_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
-        }
+        $hasFilter = $filters['date_from'] !== null
+            || $filters['date_to'] !== null
+            || $filters['status'] !== null
+            || $filters['search'] !== '';
 
-        if ($filters['date_to'] !== null) {
-            $query->where('noted_at', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+        if (! $hasFilter) {
+            $today = now()->startOfDay();
+
+            $query->where('noted_at', '>=', $today)
+                ->where('noted_at', '<', $today->copy()->addDay());
+        } else {
+            if ($filters['date_from'] !== null) {
+                $query->where('noted_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
+            }
+
+            if ($filters['date_to'] !== null) {
+                $query->where('noted_at', '<', Carbon::parse($filters['date_to'])->addDay()->startOfDay());
+            }
         }
 
         if ($filters['status'] !== null) {

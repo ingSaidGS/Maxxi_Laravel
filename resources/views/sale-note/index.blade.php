@@ -65,6 +65,8 @@
 
     {{-- Filtros de búsqueda: siempre visibles, aunque no haya notas --}}
     <form method="GET" action="{{ route('sale-notes.index') }}" id="sale-note-filters-form" class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <input type="hidden" name="per_page" value="{{ (int) request('per_page', 15) }}">
+
         <div class="mb-4 flex items-center gap-2">
             <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -283,6 +285,37 @@
             </div>
         </div>
 
+        @if ($saleNotes->hasPages() || $saleNotes->total() > 0)
+            <div class="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row">
+                <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                    <p class="mb-0 text-sm text-gray-500">
+                        Mostrando {{ $saleNotes->firstItem() }}–{{ $saleNotes->lastItem() }} de {{ $saleNotes->total() }} notas
+                    </p>
+                    <form method="GET" action="{{ route('sale-notes.index') }}" class="flex items-center gap-2 text-sm text-gray-600">
+                        @foreach (request()->except(['per_page', 'page']) as $key => $value)
+                            @if (is_array($value))
+                                @foreach ($value as $v)
+                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                @endforeach
+                            @else
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                        <label for="sale-note-per-page" class="font-medium text-gray-700">Mostrar</label>
+                        <select id="sale-note-per-page" name="per_page" onchange="this.form.submit()"
+                                class="rounded-lg border-gray-300 py-1 pl-2 pr-8 text-sm shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                            @foreach ([10, 15, 25, 50, 100] as $option)
+                                <option value="{{ $option }}" @selected((int) request('per_page', 15) === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        <span>por página</span>
+                    </form>
+                </div>
+                <div class="overflow-x-auto">
+                    {{ $saleNotes->links() }}
+                </div>
+            </div>
+        @endif
     @endif
 
     <script>

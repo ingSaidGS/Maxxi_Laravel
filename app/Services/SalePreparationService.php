@@ -17,6 +17,10 @@ class SalePreparationService
      * "scheduled_for" cae en el día indicado y las agrupa por presentación
      * (mismo producto + mismo empaque), sumando la cantidad pedida.
      *
+     * Si $date es null NO se filtra por fecha de entrega: se incluyen TODAS las
+     * notas pendientes, tengan o no una fecha agendada (el campo "scheduled_for"
+     * es opcional en el formulario de nota de venta).
+     *
      * La clave de agrupación es "presentation_id", no el tamaño: una "arroba"
      * (grande) y una "libra" (pequeño) del mismo producto quedan en renglones
      * separados porque son empaques distintos. El "presentation_size" viaja
@@ -33,13 +37,16 @@ class SalePreparationService
      *     breakdown: Collection<int, array{sale_note_id: int|null, customer: string, quantity: int}>
      * }>
      */
-    public function forDate(Carbon $date): Collection
+    public function forDate(?Carbon $date = null): Collection
     {
         return SaleNoteDetail::query()
             ->where('active', true)
             ->whereHas('saleNote', function ($query) use ($date): void {
-                $query->where('status', 'pendiente')
-                    ->whereDate('scheduled_for', $date->toDateString());
+                $query->where('status', 'pendiente');
+
+                if ($date !== null) {
+                    $query->whereDate('scheduled_for', $date->toDateString());
+                }
             })
             ->with(['saleNote', 'presentation.product.baseUnit', 'presentation.product.presentations', 'presentation.unit'])
             ->get()

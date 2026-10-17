@@ -104,6 +104,85 @@ class SaleNoteService
     }
 
     /**
+     * Actualiza la cantidad de una línea activa y recalcula el total de la nota.
+     *
+     * Solo se permite en notas pendientes: si la nota ya fue entregada o
+     * anulada, ensurePending() lanza un error de validación. Se conservan los
+     * valores históricos de la línea (conversion_factor, unit_price y
+     * base_unit_cost_at_note); solo se recalculan "quantity", "base_quantity" y
+     * "subtotal" a partir del precio unitario guardado.
+     *
+     * @throws ValidationException
+     */
+    public function updateDetailQuantity(SaleNoteDetail $detail, int $quantity): void
+    {
+        $this->ensurePending($detail->saleNote);
+
+        if (! $detail->active) {
+            throw ValidationException::withMessages([
+                'quantity' => 'No se puede editar la cantidad de una línea quitada.',
+            ]);
+        }
+
+        $baseQuantity = (int) $detail->conversion_factor * $quantity;
+
+        if ($baseQuantity > 2147483647) {
+            throw ValidationException::withMessages([
+                'quantity' => 'La cantidad indicada es demasiado grande.',
+            ]);
+        }
+
+        $detail->update([
+            'quantity' => $quantity,
+            'base_quantity' => $baseQuantity,
+            'subtotal' => round($quantity * (float) $detail->unit_price, 1),
+        ]);
+
+        $this->refreshTotal($detail->saleNote);
+    }
+
+    /**
+     * Agrega una presentación a la nota y recalcula el total.
+     *
+     * Solo se permite en notas pendientes. Si la presentación ya tiene una línea
+     * ACTIVA en la nota, se suma la cantidad a esa línea (no se duplica el
+     * renglón) conservando su precio histórico; en caso contrario se crea una
+     * línea nueva con el precio de venta y el costo actuales (igual que al
+     * registrar la nota). En ambos casos el total se recalcula desde las líneas
+     * activas.
+     *
+     * @throws ValidationException
+     */
+    public function addDetail(SaleNote $saleNote, int $presentationId, int $quantity): SaleNoteDetail
+    {
+        $this->ensurePending($saleNote);
+
+        $presentation = ProductPresentation::with('product')->findOrFail($presentationId);
+
+        return DB::transaction(function () use ($saleNote, $presentation, $quantity) {
+            $existing = $saleNote->saleNoteDetails()
+                ->where('presentation_id', $presentation->id)
+                ->where('active', true)
+                ->first();
+
+            // Ya está en la nota: se acumula la cantidad en la línea existente.
+            if ($existing !== null) {
+                $this->updateDetailQuantity($existing, (int) $existing->quantity + $quantity);
+
+                return $existing->refresh();
+            }
+
+            $detail = $saleNote->saleNoteDetails()->create(
+                $this->saleNoteDetailAttributes($presentation, $quantity)
+            );
+
+            $this->refreshTotal($saleNote);
+
+            return $detail;
+        });
+    }
+
+    /**
      * Anula la nota (baja lógica vía estado).
      *
      * La nota no se elimina: pasa a "anulada" para conservar el histórico. Solo

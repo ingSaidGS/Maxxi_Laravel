@@ -12,10 +12,12 @@ class SalePreparationController extends Controller
     public function __construct(private readonly SalePreparationService $preparation) {}
 
     /**
-     * Muestra la hoja de preparación para una fecha de entrega.
+     * Muestra la hoja de preparación.
      *
-     * Por defecto se muestra el día siguiente ("mañana"), que es cuando suele
-     * agendarse la entrega; la fecha se puede cambiar por query string.
+     * Sin "date" en el query string se muestran TODAS las notas pendientes,
+     * tengan o no una fecha de entrega agendada (el campo es opcional en el
+     * formulario de nota de venta). Si se indica una fecha válida ("Y-m-d"), se
+     * limita a las notas pendientes agendadas ese día.
      */
     public function index(Request $request): View
     {
@@ -44,13 +46,16 @@ class SalePreparationController extends Controller
 
     /**
      * Resuelve la fecha de entrega a partir del query string.
+     *
+     * Devuelve null cuando no llega una fecha válida ("Y-m-d"), lo que significa
+     * "todas las notas pendientes" (sin filtrar por fecha de entrega).
      */
-    protected function resolveDate(?string $value): Carbon
+    protected function resolveDate(mixed $value): ?Carbon
     {
-        if ($value !== null && Carbon::hasFormat($value, 'Y-m-d')) {
+        if (is_string($value) && Carbon::hasFormat($value, 'Y-m-d')) {
             return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
         }
 
-        return Carbon::tomorrow();
+        return null;
     }
 }

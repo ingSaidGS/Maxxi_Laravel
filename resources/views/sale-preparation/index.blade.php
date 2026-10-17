@@ -21,6 +21,30 @@
     $smallRows = $rows->where('size', 'pequeño')->values();
     $unsizedRows = $rows->filter(fn (array $row): bool => ! in_array($row['size'], ['grande', 'pequeño'], true))->values();
 
+    // Pequeños: se agrupan por NOTA DE VENTA (el cliente necesita separar su
+    // pedido por nota). Se aplana el desglose de cada presentación pequeña para
+    // reunir, por nota, todas las presentaciones que lleva. Los grandes no cambian.
+    $smallNotes = $smallRows
+        ->flatMap(fn (array $row): array => $row['breakdown']
+            ->map(fn (array $item): array => [
+                'sale_note_id' => $item['sale_note_id'],
+                'customer' => $item['customer'],
+                'product' => $row['product'],
+                'unit' => $row['unit'],
+                'factor' => $row['factor'],
+                'base_unit_symbol' => $row['base_unit_symbol'],
+                'quantity' => $item['quantity'],
+            ])
+            ->all())
+        ->groupBy('sale_note_id')
+        ->map(fn ($items): array => [
+            'sale_note_id' => $items->first()['sale_note_id'],
+            'customer' => (string) $items->first()['customer'],
+            'items' => $items->values(),
+        ])
+        ->sortBy('sale_note_id')
+        ->values();
+
     // Iconos (Heroicons) por sección: camión para grandes, caja para pequeños.
     $groups = [
         [
@@ -41,6 +65,7 @@
             'chip' => 'bg-maxxi-navy/10 text-maxxi-navy',
             'badge' => 'bg-maxxi-navy/10 text-maxxi-navy',
             'rows' => $smallRows,
+            'notes' => $smallNotes,
             'always' => true,
         ],
     ];
@@ -60,8 +85,8 @@
 
     $today = now()->toDateString();
     $tomorrow = now()->addDay()->toDateString();
-    $isToday = $date->toDateString() === $today;
-    $isTomorrow = $date->toDateString() === $tomorrow;
+    $isToday = $date?->toDateString() === $today;
+    $isTomorrow = $date?->toDateString() === $tomorrow;
 @endphp
 
 <x-layouts.sistema title="Preparación de venta">
@@ -69,7 +94,13 @@
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="mb-0 text-2xl font-semibold text-gray-800">Preparación de venta</h1>
-            <p class="mb-0 mt-1 text-sm text-gray-500">Productos a alistar, agrupados por presentación, para las notas pendientes con entrega en la fecha elegida.</p>
+            <p class="mb-0 mt-1 text-sm text-gray-500">
+                @if ($date)
+                    Productos a alistar, agrupados por presentación, para las notas pendientes con entrega el {{ $date->format('d/m/Y') }}.
+                @else
+                    Productos a alistar, agrupados por presentación, para todas las notas de venta pendientes.
+                @endif
+            </p>
         </div>
 
         <button type="button" onclick="window.print()" class="{{ $botones['secundario'] }} w-full sm:w-auto print:hidden">
@@ -85,7 +116,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="w-full sm:w-64">
                 <label for="sale-preparation-date" class="mb-1 block text-sm font-medium text-gray-700">Fecha de entrega</label>
-                <input type="date" id="sale-preparation-date" name="date" value="{{ $date->format('Y-m-d') }}"
+                <input type="date" id="sale-preparation-date" name="date" value="{{ $date?->format('Y-m-d') }}"
                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
             </div>
 
@@ -93,6 +124,7 @@
                 <button type="submit" class="{{ $botones['primario'] }}">Ver preparación</button>
                 <a href="{{ route('sale-preparations.index', ['date' => $today]) }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $isToday])>Hoy</a>
                 <a href="{{ route('sale-preparations.index', ['date' => $tomorrow]) }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $isTomorrow])>Mañana</a>
+                <a href="{{ route('sale-preparations.index') }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $date === null])>Todas</a>
             </div>
         </div>
     </form>
@@ -100,11 +132,15 @@
     {{-- Fecha activa --}}
     <div class="mb-4">
         <h2 class="mb-0 text-lg font-semibold text-maxxi-navy">
-            Preparación del {{ $date->format('d/m/Y') }}
-            @if ($isTomorrow)
-                <span class="text-maxxi-orange-dark">· mañana</span>
-            @elseif ($isToday)
-                <span class="text-maxxi-orange-dark">· hoy</span>
+            @if ($date)
+                Preparación del {{ $date->format('d/m/Y') }}
+                @if ($isTomorrow)
+                    <span class="text-maxxi-orange-dark">· mañana</span>
+                @elseif ($isToday)
+                    <span class="text-maxxi-orange-dark">· hoy</span>
+                @endif
+            @else
+                Preparación de todas las notas pendientes
             @endif
         </h2>
     </div>
@@ -115,8 +151,20 @@
             <svg class="mx-auto h-10 w-10 text-maxxi-orange/40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
             </svg>
-            <p class="mb-1 mt-3 font-medium text-gray-700">No hay nada que preparar para esta fecha</p>
-            <p class="mb-0 text-sm text-gray-500">No hay notas de venta pendientes con entrega agendada el {{ $date->format('d/m/Y') }}.</p>
+            <p class="mb-1 mt-3 font-medium text-gray-700">
+                @if ($date)
+                    No hay nada que preparar para esta fecha
+                @else
+                    No hay nada que preparar
+                @endif
+            </p>
+            <p class="mb-0 text-sm text-gray-500">
+                @if ($date)
+                    No hay notas de venta pendientes con entrega agendada el {{ $date->format('d/m/Y') }}.
+                @else
+                    No hay notas de venta en estado pendiente.
+                @endif
+            </p>
         </div>
     @else
         {{-- Tarjetas de resumen --}}
@@ -181,7 +229,88 @@
                     @if ($group['rows']->isEmpty())
                         {{-- Grupo sin renglones --}}
                         <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center">
-                            <p class="mb-0 text-sm text-gray-500">Nada por preparar en {{ mb_strtolower($group['title']) }} para esta fecha.</p>
+                            <p class="mb-0 text-sm text-gray-500">Nada por preparar en {{ mb_strtolower($group['title']) }}{{ $date ? ' para esta fecha' : '' }}.</p>
+                        </div>
+                    @elseif ($group['key'] === 'pequeño')
+                        {{-- Pequeños: agrupados por nota de venta (cliente + sus presentaciones) --}}
+                        {{-- Tabla (escritorio) --}}
+                        <div class="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block print:block">
+                            <table class="mb-0 w-full border-collapse text-sm">
+                                <thead>
+                                    <tr class="text-left text-xs uppercase tracking-wide">
+                                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Producto</th>
+                                        <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Presentación</th>
+                                        <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Cantidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($group['notes'] as $note)
+                                        {{-- Encabezado de la nota: aquí se separa el pedido por nota/cliente --}}
+                                        <tr class="border-t border-gray-200 bg-maxxi-navy/5">
+                                            <td colspan="3" class="px-4 py-2.5">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span class="font-semibold text-maxxi-navy">
+                                                        @if ($note['sale_note_id'])
+                                                            <a href="{{ route('sale-notes.show', $note['sale_note_id']) }}" class="hover:text-maxxi-orange">NV #{{ $note['sale_note_id'] }}</a>
+                                                        @else
+                                                            NV —
+                                                        @endif
+                                                    </span>
+                                                    @if ($note['customer'] !== '—')
+                                                        <span class="text-sm text-gray-600">Cliente: <span class="font-medium text-gray-800">{{ $note['customer'] }}</span></span>
+                                                    @endif
+                                                    <span class="ml-auto text-xs text-gray-500">{{ $note['items']->count() }} {{ $note['items']->count() === 1 ? 'presentación' : 'presentaciones' }}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @foreach ($note['items'] as $item)
+                                            <tr class="border-t border-gray-100 transition hover:bg-maxxi-cream/60 print:break-inside-avoid">
+                                                <td class="px-4 py-3 font-medium text-gray-800">{{ $item['product'] }}</td>
+                                                <td class="px-4 py-3 text-gray-600">
+                                                    {{ $item['unit'] }}
+                                                    <span class="text-gray-400">(x{{ $item['factor'] }} {{ $item['base_unit_symbol'] }})</span>
+                                                </td>
+                                                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-gray-800">
+                                                    {{ $formatQuantity($item['quantity']) }} {{ $pluralize($item['unit'], $item['quantity']) }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Tarjetas (móvil) --}}
+                        <div class="space-y-3 md:hidden print:hidden">
+                            @foreach ($group['notes'] as $note)
+                                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                    <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-maxxi-navy/5 px-4 py-3">
+                                        <span class="font-semibold text-maxxi-navy">
+                                            @if ($note['sale_note_id'])
+                                                <a href="{{ route('sale-notes.show', $note['sale_note_id']) }}" class="hover:text-maxxi-orange">NV #{{ $note['sale_note_id'] }}</a>
+                                            @else
+                                                NV —
+                                            @endif
+                                        </span>
+                                        @if ($note['customer'] !== '—')
+                                            <span class="text-sm text-gray-600">Cliente: <span class="font-medium text-gray-800">{{ $note['customer'] }}</span></span>
+                                        @endif
+                                        <span class="ml-auto text-xs text-gray-500">{{ $note['items']->count() }} {{ $note['items']->count() === 1 ? 'presentación' : 'presentaciones' }}</span>
+                                    </div>
+
+                                    <ul class="mb-0 list-none space-y-1 p-4">
+                                        @foreach ($note['items'] as $item)
+                                            <li class="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p class="mb-0 font-semibold text-gray-800">{{ $item['product'] }}</p>
+                                                    <p class="mb-0 mt-0.5 text-xs text-gray-500">{{ $item['unit'] }} (x{{ $item['factor'] }} {{ $item['base_unit_symbol'] }})</p>
+                                                </div>
+                                                <span class="shrink-0 font-semibold tabular-nums text-gray-800">{{ $formatQuantity($item['quantity']) }} {{ $pluralize($item['unit'], $item['quantity']) }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
                         </div>
                     @else
                         {{-- Tabla (escritorio) --}}

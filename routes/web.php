@@ -46,10 +46,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('purchases', PurchaseController::class);
 
     // Notas de venta (preventa/pedido). Al entregar se genera la venta.
-    // El detalle se quita/reactiva de forma individual (baja lógica vía "active").
+    // El detalle se agrega, se quita/reactiva y se edita su cantidad de forma
+    // individual (baja lógica vía "active"; solo en notas pendientes).
     Route::post('sale-notes/{sale_note}/entregar', [SaleNoteController::class, 'entregar'])->name('sale-notes.entregar');
+    Route::post('sale-notes/{sale_note}/details', [SaleNoteController::class, 'storeDetail'])->name('sale-notes.details.store');
     Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/deactivate', [SaleNoteController::class, 'deactivateDetail'])->name('sale-notes.details.deactivate');
     Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/restore', [SaleNoteController::class, 'restoreDetail'])->name('sale-notes.details.restore');
+    Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/quantity', [SaleNoteController::class, 'updateDetailQuantity'])->name('sale-notes.details.quantity');
     Route::resource('sale-notes', SaleNoteController::class);
 
     // Preparación de venta (hoja de alistamiento por fecha de entrega; solo lectura).

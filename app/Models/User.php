@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -21,6 +22,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'tipo',
         'password',
     ];
 
@@ -44,6 +46,23 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'tipo' => UserType::class,
         ];
+    }
+
+    /**
+     * Indica si el usuario es encargado.
+     */
+    public function isEncargado(): bool
+    {
+        return $this->tipo === UserType::Encargado;
+    }
+
+    /**
+     * Indica si el usuario es empleado.
+     */
+    public function isEmpleado(): bool
+    {
+        return $this->tipo === UserType::Empleado;
     }
 }

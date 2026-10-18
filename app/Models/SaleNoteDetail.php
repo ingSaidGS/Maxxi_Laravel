@@ -22,6 +22,7 @@ class SaleNoteDetail extends Model
         'base_unit_cost_at_note',
         'subtotal',
         'active',
+        'picked_quantity',
     ];
 
     /**
@@ -33,6 +34,7 @@ class SaleNoteDetail extends Model
     {
         return [
             'base_quantity' => 'integer',
+            'picked_quantity' => 'integer',
             'unit_price' => 'decimal:1',
             'base_unit_cost_at_note' => 'decimal:2',
             'subtotal' => 'decimal:1',

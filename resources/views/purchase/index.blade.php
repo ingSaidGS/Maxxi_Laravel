@@ -207,7 +207,9 @@
                                 <td data-href-ignore class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('purchases.show', $purchase) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                                        <a href="{{ route('purchases.edit', $purchase) }}" class="{{ $botones['marino'] }}">Editar</a>
+                                        @can('manage-purchases')
+                                            <a href="{{ route('purchases.edit', $purchase) }}" class="{{ $botones['marino'] }}">Editar</a>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -241,7 +243,9 @@
 
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                             <a href="{{ route('purchases.show', $purchase) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                            <a href="{{ route('purchases.edit', $purchase) }}" class="{{ $botones['marino'] }}">Editar</a>
+                            @can('manage-purchases')
+                                <a href="{{ route('purchases.edit', $purchase) }}" class="{{ $botones['marino'] }}">Editar</a>
+                            @endcan
                         </div>
                     </div>
                 @endforeach

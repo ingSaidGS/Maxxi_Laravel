@@ -1,15 +1,25 @@
 @php
     // Enlaces del sistema que se muestran cuando hay sesión iniciada.
+    // Cada enlace puede declarar un "gate": si el usuario no lo autoriza,
+    // no se muestra en la navegación (el empleado no ve Notas de venta,
+    // Reportes ni Usuarios).
     $navLinks = [
         ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
         ['label' => 'Unidades', 'href' => route('units.index'), 'active' => request()->routeIs('units.*')],
         ['label' => 'Productos', 'href' => route('products.index'), 'active' => request()->routeIs('products.*') || request()->routeIs('product-presentations.*')],
         ['label' => 'Ventas', 'href' => route('sales.index'), 'active' => request()->routeIs('sales.*')],
-        ['label' => 'Notas de venta', 'href' => route('sale-notes.index'), 'active' => request()->routeIs('sale-notes.*')],
+        ['label' => 'Notas de venta', 'href' => route('sale-notes.index'), 'active' => request()->routeIs('sale-notes.*'), 'gate' => 'manage-sale-notes'],
         ['label' => 'Preparación', 'href' => route('sale-preparations.index'), 'active' => request()->routeIs('sale-preparations.*')],
-        ['label' => 'Reportes', 'href' => route('reports.index'), 'active' => request()->routeIs('reports.*')],
+        ['label' => 'Reportes', 'href' => route('reports.index'), 'active' => request()->routeIs('reports.*'), 'gate' => 'view-reports'],
         ['label' => 'Compras', 'href' => route('purchases.index'), 'active' => request()->routeIs('purchases.*')],
+        ['label' => 'Usuarios', 'href' => route('users.index'), 'active' => request()->routeIs('users.*'), 'gate' => 'manage-users'],
     ];
+
+    $user = auth()->user();
+    $navLinks = array_values(array_filter(
+        $navLinks,
+        fn (array $link): bool => empty($link['gate']) || ($user !== null && $user->can($link['gate']))
+    ));
 @endphp
 
 <header x-data="{ open: false }" class="sticky top-0 z-50 border-b border-white/10 bg-maxxi-navy text-white shadow-md print:hidden">

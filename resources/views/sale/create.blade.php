@@ -185,17 +185,21 @@
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 class="mb-4 text-lg font-semibold text-gray-800">Pago</h2>
 
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <div>
-                    <label for="sale_discount" class="mb-1 block text-sm font-medium text-gray-700">Descuento (Bs.)</label>
-                    <input type="number" id="sale_discount" name="sale_discount" value="{{ old('sale_discount', '') }}" step="0.1" min="0" inputmode="decimal"
-                           placeholder="Bs. 0.0"
-                           @error('sale_discount') aria-invalid="true" @enderror
-                           class="block w-full rounded-lg shadow-sm focus:ring-2 @error('sale_discount') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
-                    @error('sale_discount')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+            {{-- El empleado no aplica descuentos: el campo ni se renderiza (y el
+                 servidor ignora cualquier valor enviado en SaleController::store). --}}
+            <div class="grid grid-cols-1 gap-5 @can('manage-sales') sm:grid-cols-3 @else sm:grid-cols-2 @endcan">
+                @can('manage-sales')
+                    <div>
+                        <label for="sale_discount" class="mb-1 block text-sm font-medium text-gray-700">Descuento (Bs.)</label>
+                        <input type="number" id="sale_discount" name="sale_discount" value="{{ old('sale_discount', '') }}" step="0.1" min="0" inputmode="decimal"
+                               placeholder="Bs. 0.0"
+                               @error('sale_discount') aria-invalid="true" @enderror
+                               class="block w-full rounded-lg shadow-sm focus:ring-2 @error('sale_discount') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                        @error('sale_discount')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endcan
 
                 <div>
                     <label for="cash" class="mb-1 block text-sm font-medium text-gray-700">Efectivo (Bs.)</label>
@@ -261,7 +265,16 @@
 
             <p id="applied-cash-note" class="mt-2 mb-0 hidden text-xs font-medium text-maxxi-navy"></p>
 
-            <p class="mt-2 mb-0 text-xs text-gray-500">Si efectivo + QR es menor que el total, se marca como FIADA. Si es mayor, el vuelto se devuelve del efectivo y solo se registra lo justo (efectivo + QR = total).</p>
+            {{-- Aviso activo cuando el empleado intenta dejar la venta fiada --}}
+            <p id="fiada-blocked-note" class="mt-2 mb-0 hidden text-xs font-semibold text-red-600">
+                Como empleado no puedes dejar ventas fiadas: el pago en efectivo y QR debe cubrir el total.
+            </p>
+
+            @can('manage-sales')
+                <p class="mt-2 mb-0 text-xs text-gray-500">Si efectivo + QR es menor que el total, se marca como FIADA. Si es mayor, el vuelto se devuelve del efectivo y solo se registra lo justo (efectivo + QR = total).</p>
+            @else
+                <p class="mt-2 mb-0 text-xs text-gray-500">Como empleado no se aplican descuentos y el pago en efectivo y QR debe cubrir el total de la venta.</p>
+            @endcan
         </div>
 
         {{-- Acciones --}}
@@ -470,6 +483,13 @@
             var changeDisplay = document.getElementById('change-display');
             var appliedCashNote = document.getElementById('applied-cash-note');
             var statusDisplay = document.getElementById('status-display');
+            var fiadaBlockedNote = document.getElementById('fiada-blocked-note');
+
+            // El empleado no puede aplicar descuentos ni dar fiado: el campo de
+            // descuento no se renderiza y la venta fiada se bloquea aquí y, con
+            // carácter definitivo, en SaleController::store().
+            var puedeDescuentar = !!discountInput;
+            var puedeFiardar = @json(auth()->user()?->can('manage-sales') ?? false);
 
             var inputClass = 'block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange';
             var statusPaidClass = 'inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700';
@@ -513,7 +533,7 @@
                     return acc + subtotalOf(item);
                 }, 0);
 
-                var discount = Math.max(0, parseMoney(discountInput.value));
+                var discount = puedeDescuentar ? Math.max(0, parseMoney(discountInput.value)) : 0;
                 var total = Math.round(Math.max(0, subtotals - discount) * 10) / 10;
                 var cash = parseMoney(cashInput.value);
                 var qr = parseMoney(qrInput.value);
@@ -694,6 +714,11 @@
                     } else {
                         appliedCashNote.classList.add('hidden');
                     }
+                }
+
+                // Aviso inmediato al empleado cuando el pago no cubre el total.
+                if (fiadaBlockedNote) {
+                    fiadaBlockedNote.classList.toggle('hidden', puedeFiardar || !amounts.fiada);
                 }
 
                 nameInput.required = amounts.fiada;
@@ -987,7 +1012,9 @@
                 addButton.addEventListener('click', addCurrentSelection);
             }
 
-            discountInput.addEventListener('input', render);
+            if (discountInput) {
+                discountInput.addEventListener('input', render);
+            }
             cashInput.addEventListener('input', render);
             qrInput.addEventListener('input', render);
 
@@ -1123,6 +1150,13 @@
             // venta queda "fiada" y el genérico cuando queda "pagada".
             function openConfirmModal() {
                 var amounts = computeAmounts();
+
+                // Bloqueo para el empleado: una venta que quede fiada no puede
+                // registrarse (el aviso rojo ya está visible en la sección de pago).
+                if (amounts.fiada && !puedeFiardar) {
+                    if (fiadaBlockedNote) { fiadaBlockedNote.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    return;
+                }
 
                 if (!window.Alpine) {
                     // Respaldo por si el modal no está disponible.

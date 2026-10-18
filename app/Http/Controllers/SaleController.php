@@ -132,6 +132,10 @@ class SaleController extends Controller
      *
      * La venta y el descuento de stock se ejecutan en una única transacción: si
      * algún producto no tiene stock suficiente, no se registra nada.
+     *
+     * Restricciones del rol empleado: no puede aplicar descuento (el valor
+     * enviado se ignora y se fuerza a 0) ni registrar ventas fiadas (se
+     * rechaza con error de validación si el pago no cubre el total).
      */
     public function store(Request $request): RedirectResponse
     {
@@ -139,6 +143,10 @@ class SaleController extends Controller
 
         $validated = $request->validate($this->rules());
         $details = $this->validatedDetails($request);
+
+        if ($request->user()->isEmpleado()) {
+            $validated['sale_discount'] = 0;
+        }
 
         $subtotals = 0.0;
         $requirements = [];
@@ -156,6 +164,13 @@ class SaleController extends Controller
         }
 
         $amounts = $this->resolveAmounts($subtotals, $validated);
+
+        if ($amounts['status'] === 'fiada' && $request->user()->isEmpleado()) {
+            throw ValidationException::withMessages([
+                'cash' => 'Como empleado no puedes registrar ventas fiadas: el pago en efectivo y QR debe cubrir el total.',
+            ]);
+        }
+
         $this->ensureCustomerForFiada($amounts['status'], $validated);
 
         $validated['total'] = $amounts['total'];

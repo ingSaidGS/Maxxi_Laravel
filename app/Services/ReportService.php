@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use Illuminate\Support\Carbon;
@@ -34,6 +35,36 @@ class ReportService
             'byUser' => $this->byUser($start, $end),
             'topProducts' => $this->topProducts($start, $end),
         ];
+    }
+
+    /**
+     * Productos con stock bajo en su unidad de compra.
+     *
+     * Se filtran productos activos que tengan al menos una presentación de compra
+     * activa con conversion_factor > 0. La comparación se hace en unidad de compra:
+     * stock_base <= threshold * conversion_factor (más seguro que dividir).
+     * Cuando un producto tiene varias presentaciones de compra activas, se usa
+     * el menor conversion_factor (la más "chica") para calcular el umbral.
+     *
+     * @return Collection<int, object>
+     */
+    public function lowStock(int $threshold): Collection
+    {
+        return Product::query()
+            ->join('product_presentations', function ($join) {
+                $join->on('product_presentations.product_id', '=', 'products.id')
+                    ->where('product_presentations.purchase_enable', true)
+                    ->where('product_presentations.active', true)
+                    ->where('product_presentations.conversion_factor', '>', 0);
+            })
+            ->where('products.active', true)
+            ->whereRaw('products.stock <= ? * product_presentations.conversion_factor', [$threshold])
+            ->selectRaw('products.name')
+            ->selectRaw('MAX(products.stock) as stock')
+            ->selectRaw('MIN(product_presentations.conversion_factor) as conversion_factor')
+            ->groupBy('products.id', 'products.name')
+            ->orderByRaw('products.stock::numeric / NULLIF(MIN(product_presentations.conversion_factor), 0)')
+            ->get();
     }
 
     /**

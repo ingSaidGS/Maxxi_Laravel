@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -17,8 +18,18 @@ class DatabaseSeeder extends Seeder
     {
         User::firstOrCreate(
             ['email' => 'test@example.com'],
-            ['name' => 'Test User', 'password' => 'password', 'email_verified_at' => now()],
+            ['name' => 'Test User', 'password' => 'password', 'tipo' => UserType::Encargado, 'email_verified_at' => now()],
         );
+
+        // Idempotente: si ya existía, se fuerza el rol esperado.
+        User::where('email', 'test@example.com')->update(['tipo' => UserType::Encargado->value]);
+
+        User::firstOrCreate(
+            ['email' => 'cajero@example.com'],
+            ['name' => 'Cajero Maxxi', 'password' => 'password', 'tipo' => UserType::Empleado, 'email_verified_at' => now()],
+        );
+
+        User::where('email', 'cajero@example.com')->update(['tipo' => UserType::Empleado->value]);
 
         $this->call([
             UnitSeeder::class,

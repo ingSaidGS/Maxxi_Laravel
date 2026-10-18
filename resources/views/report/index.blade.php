@@ -55,14 +55,13 @@
                 </svg>
                 Excel
             </a>
-            <button type="button" onclick="window.print()"
-                    title="Abre el diálogo de impresión: elige «Guardar como PDF»"
-                    class="{{ $botones['secundario'] }} w-full sm:w-auto">
+            <a href="{{ route('reports.export-pdf', ['from' => $from->toDateString(), 'to' => $to->toDateString()]) }}"
+               class="{{ $botones['secundario'] }} w-full sm:w-auto">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3 3m0 0l-3-3m3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
                 PDF
-            </button>
+            </a>
         </div>
     </div>
 
@@ -449,4 +448,288 @@
             </div>
         @endif
     </section>
+
+    {{-- 5. Productos con stock bajo (independiente de los filtros por fecha) --}}
+    <section aria-labelledby="report-low-stock-title" class="mt-8">
+        <div class="mb-3 flex items-center gap-2">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600" aria-hidden="true">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+            </span>
+            <h2 id="report-low-stock-title" class="mb-0 text-lg font-semibold text-maxxi-navy">Productos con stock bajo</h2>
+        </div>
+
+        {{-- Filtro por umbral (consulta AJAX, no recarga la página) --}}
+        <form id="low-stock-form" class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 print:hidden" autocomplete="off">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div class="w-full sm:w-44">
+                    <label for="low-stock-threshold" class="mb-1 block text-sm font-medium text-gray-700">Umbral en unidad de compra</label>
+                    <select id="low-stock-threshold" name="threshold"
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange">
+                        @for ($i = 1; $i <= 5; $i++)
+                            <option value="{{ $i }}" @selected($i === 2)>{{ $i }}</option>
+                        @endfor
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <button type="submit" id="low-stock-button"
+                            class="{{ $botones['primario'] }} w-full sm:w-auto disabled:cursor-not-allowed disabled:opacity-60">
+                        <span id="low-stock-button-idle" class="inline-flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
+                            Buscar
+                        </span>
+                        <span id="low-stock-button-loading" class="hidden items-center gap-1.5">
+                            <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Buscando...
+                        </span>
+                    </button>
+
+                    {{-- Exporta a PDF el mismo listado, con el umbral elegido. --}}
+                    <a id="low-stock-pdf" href="{{ route('reports.low-stock.pdf', ['threshold' => 2]) }}"
+                       class="{{ $botones['secundario'] }} w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3 3m0 0l-3-3m3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        PDF
+                    </a>
+                </div>
+            </div>
+
+            <p class="mb-0 mt-3 text-sm text-gray-500">
+                Busca en todos los activos cuyo stock, medido en su unidad de compra (presentación de compra activa),
+                sea menor o igual al umbral. No depende del rango de fechas.
+            </p>
+        </form>
+
+        {{-- Resultados (pintados por JS; sin recarga) --}}
+        <div id="low-stock-results" aria-live="polite" aria-busy="false">
+            {{-- Estado inicial --}}
+            <div id="low-stock-placeholder" class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center">
+                <p class="mb-1 font-medium text-gray-700">Elige un umbral y presiona «Buscar»</p>
+                <p class="mb-0 text-sm text-gray-500">La consulta se hace sin recargar la página.</p>
+            </div>
+
+            {{-- Cargando --}}
+            <div id="low-stock-loading" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center">
+                <svg class="mx-auto mb-2 h-6 w-6 animate-spin text-maxxi-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <p class="mb-0 text-sm font-medium text-gray-700">Buscando productos...</p>
+            </div>
+
+            {{-- Error --}}
+            <div id="low-stock-error" role="alert" class="hidden rounded-xl border border-red-200 bg-red-50 px-6 py-10 text-center">
+                <p class="mb-1 font-medium text-red-700">No se pudo consultar el stock</p>
+                <p class="mb-0 text-sm text-red-600">Ocurrió un error al buscar. Intenta de nuevo.</p>
+            </div>
+
+            {{-- Sin resultados --}}
+            <div id="low-stock-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center">
+                <p class="mb-1 font-medium text-gray-700">Sin productos con stock bajo</p>
+                <p class="mb-0 text-sm text-gray-500">Ningún producto llegó al umbral seleccionado.</p>
+            </div>
+
+            {{-- Lista --}}
+            <div id="low-stock-list" class="hidden">
+                <div class="mb-3">
+                    <span id="low-stock-count" class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"></span>
+                </div>
+
+                {{-- Tabla (escritorio) --}}
+                <div class="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+                    <table class="mb-0 w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="text-left text-xs uppercase tracking-wide">
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Producto</th>
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Stock (unidad de compra)</th>
+                                <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Unidad base</th>
+                            </tr>
+                        </thead>
+                        <tbody id="low-stock-tbody"></tbody>
+                    </table>
+                </div>
+
+                {{-- Tarjetas (móvil) --}}
+                <div id="low-stock-cards" class="space-y-3 md:hidden"></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        (function () {
+            // Sección «Productos con stock bajo»: consulta AJAX (sin recarga).
+            // Contrato JSON esperado del endpoint (fase backend):
+            //   [{ "name": "Galleta", "stock": 44, "conversion_factor": 24 }]
+            // Donde "stock" está en unidad base y "conversion_factor" es el de la
+            // presentación de compra activa (unidad de compra).
+            var form = document.getElementById('low-stock-form');
+            var button = document.getElementById('low-stock-button');
+            var buttonIdle = document.getElementById('low-stock-button-idle');
+            var buttonLoading = document.getElementById('low-stock-button-loading');
+            var thresholdSelect = document.getElementById('low-stock-threshold');
+            var pdfLink = document.getElementById('low-stock-pdf');
+            var results = document.getElementById('low-stock-results');
+            var placeholder = document.getElementById('low-stock-placeholder');
+            var loading = document.getElementById('low-stock-loading');
+            var errorBox = document.getElementById('low-stock-error');
+            var empty = document.getElementById('low-stock-empty');
+            var list = document.getElementById('low-stock-list');
+            var count = document.getElementById('low-stock-count');
+            var tbody = document.getElementById('low-stock-tbody');
+            var cards = document.getElementById('low-stock-cards');
+
+            // El botón PDF exporta el mismo listado con el umbral elegido.
+            var pdfUrlPattern = @json(route('reports.low-stock.pdf', ['threshold' => '__THRESHOLD__']));
+
+            function syncPdfLink() {
+                if (pdfLink) {
+                    pdfLink.href = pdfUrlPattern.replace('__THRESHOLD__', thresholdSelect.value);
+                }
+            }
+
+            thresholdSelect.addEventListener('change', syncPdfLink);
+            syncPdfLink();
+
+            // Muestra solo uno de los estados posibles de la sección.
+            function showState(state) {
+                placeholder.classList.toggle('hidden', state !== 'placeholder');
+                loading.classList.toggle('hidden', state !== 'loading');
+                errorBox.classList.toggle('hidden', state !== 'error');
+                empty.classList.toggle('hidden', state !== 'empty');
+                list.classList.toggle('hidden', state !== 'list');
+                results.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+            }
+
+            // Stock en unidad de compra: "1 cja 20 ud", "2 cja", "20 ud" o "Sin stock".
+            function formatPurchaseStock(stock, factor) {
+                if (stock <= 0) {
+                    return 'Sin stock';
+                }
+
+                var packs = Math.floor(stock / factor);
+                var loose = stock % factor;
+                var parts = [];
+
+                if (packs > 0) {
+                    parts.push(packs + ' cja');
+                }
+                if (loose > 0) {
+                    parts.push(loose + ' ud');
+                }
+
+                return parts.join(' ') || (stock + ' ud');
+            }
+
+            // Texto del stock con su color semántico (rojo si se agotó, ámbar si es bajo).
+            function appendStockCell(cell, stock, factor) {
+                var span = document.createElement('span');
+                span.className = stock > 0
+                    ? 'whitespace-nowrap font-semibold tabular-nums text-amber-600'
+                    : 'whitespace-nowrap font-semibold text-red-600';
+                span.textContent = formatPurchaseStock(stock, factor);
+                cell.appendChild(span);
+            }
+
+            function render(items, threshold) {
+                tbody.replaceChildren();
+                cards.replaceChildren();
+
+                items.forEach(function (item) {
+                    var stock = Math.max(parseInt(item.stock, 10) || 0, 0);
+                    var factor = Math.max(parseInt(item.conversion_factor, 10) || 0, 1);
+
+                    // Fila (escritorio).
+                    var row = document.createElement('tr');
+                    row.className = 'border-t border-gray-100 transition hover:bg-maxxi-cream/60';
+
+                    var nameCell = document.createElement('td');
+                    nameCell.className = 'px-4 py-3 font-medium text-gray-800';
+                    nameCell.textContent = item.name;
+
+                    var stockCell = document.createElement('td');
+                    stockCell.className = 'px-4 py-3';
+                    appendStockCell(stockCell, stock, factor);
+
+                    var baseCell = document.createElement('td');
+                    baseCell.className = 'whitespace-nowrap px-4 py-3 text-right tabular-nums text-gray-500';
+                    baseCell.textContent = stock + ' ud';
+
+                    row.append(nameCell, stockCell, baseCell);
+                    tbody.appendChild(row);
+
+                    // Tarjeta (móvil).
+                    var card = document.createElement('div');
+                    card.className = 'rounded-xl border border-gray-200 bg-white p-4 shadow-sm';
+
+                    var header = document.createElement('div');
+                    header.className = 'flex items-center justify-between gap-3';
+
+                    var name = document.createElement('p');
+                    name.className = 'mb-0 font-semibold text-gray-800';
+                    name.textContent = item.name;
+
+                    var stockBadge = document.createElement('span');
+                    stockBadge.className = stock > 0
+                        ? 'inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700'
+                        : 'inline-flex shrink-0 items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700';
+                    stockBadge.textContent = formatPurchaseStock(stock, factor);
+
+                    header.append(name, stockBadge);
+
+                    var base = document.createElement('p');
+                    base.className = 'mb-0 mt-2 text-sm text-gray-500';
+                    base.textContent = 'Stock real: ' + stock + ' ud (unidad base)';
+
+                    card.append(header, base);
+                    cards.appendChild(card);
+                });
+
+                var label = threshold === 1 ? '≤ 1 cja' : '≤ ' + threshold + ' cjas';
+                count.textContent = items.length + (items.length === 1 ? ' producto' : ' productos') + ' con stock bajo (' + label + ')';
+                showState(items.length > 0 ? 'list' : 'empty');
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                button.disabled = true;
+                buttonIdle.classList.add('hidden');
+                buttonLoading.classList.remove('hidden');
+                buttonLoading.classList.add('inline-flex');
+                showState('loading');
+
+                var threshold = thresholdSelect.value;
+
+                fetch('{{ route('reports.low-stock') }}?threshold=' + encodeURIComponent(threshold), {
+                    headers: { 'Accept': 'application/json' }
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function (items) {
+                        render(Array.isArray(items) ? items : [], parseInt(threshold, 10) || 1);
+                    })
+                    .catch(function () {
+                        showState('error');
+                    })
+                    .finally(function () {
+                        button.disabled = false;
+                        buttonLoading.classList.add('hidden');
+                        buttonLoading.classList.remove('inline-flex');
+                        buttonIdle.classList.remove('hidden');
+                    });
+            });
+        })();
+    </script>
 </x-layouts.sistema>

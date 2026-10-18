@@ -69,12 +69,14 @@
             <p class="mb-0 mt-1 text-sm text-gray-500">Productos registrados y su stock en unidad base.</p>
         </div>
 
-        <a href="{{ route('products.create') }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-            </svg>
-            Nuevo producto
-        </a>
+        @can('manage-catalog')
+            <a href="{{ route('products.create') }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                </svg>
+                Nuevo producto
+            </a>
+        @endcan
     </div>
 
     {{-- Mensaje de éxito --}}
@@ -112,12 +114,14 @@
             </svg>
             <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay productos registrados</p>
             <p class="mb-0 text-sm text-gray-500">Crea el primer producto para empezar.</p>
-            <a href="{{ route('products.create') }}" class="{{ $botones['primario'] }} mt-4">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                </svg>
-                Nuevo producto
-            </a>
+            @can('manage-catalog')
+                <a href="{{ route('products.create') }}" class="{{ $botones['primario'] }} mt-4">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nuevo producto
+                </a>
+            @endcan
         </div>
     @else
         {{-- Filtros: búsqueda libre + estado --}}
@@ -212,23 +216,26 @@
                                 <td data-href-ignore class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('products.show', $product) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                                        <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }}">Editar</a>
 
-                                        @if ($product->active)
-                                            <form action="{{ route('products.destroy', $product) }}" method="POST"
-                                                  data-product-action="deactivate" data-product-name="{{ $product->name }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                            </form>
-                                        @else
-                                            <form action="{{ route('products.restore', $product) }}" method="POST"
-                                                  data-product-action="restore" data-product-name="{{ $product->name }}">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                            </form>
-                                        @endif
+                                        @can('manage-catalog')
+                                            <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                            @if ($product->active)
+                                                <form action="{{ route('products.destroy', $product) }}" method="POST"
+                                                      data-product-action="deactivate" data-product-name="{{ $product->name }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('products.restore', $product) }}" method="POST"
+                                                      data-product-action="restore" data-product-name="{{ $product->name }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                </form>
+                                            @endif
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -266,23 +273,26 @@
 
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                             <a href="{{ route('products.show', $product) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                            <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }}">Editar</a>
 
-                            @if ($product->active)
-                                <form action="{{ route('products.destroy', $product) }}" method="POST"
-                                      data-product-action="deactivate" data-product-name="{{ $product->name }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                </form>
-                            @else
-                                <form action="{{ route('products.restore', $product) }}" method="POST"
-                                      data-product-action="restore" data-product-name="{{ $product->name }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                </form>
-                            @endif
+                            @can('manage-catalog')
+                                <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                @if ($product->active)
+                                    <form action="{{ route('products.destroy', $product) }}" method="POST"
+                                          data-product-action="deactivate" data-product-name="{{ $product->name }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('products.restore', $product) }}" method="POST"
+                                          data-product-action="restore" data-product-name="{{ $product->name }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                    </form>
+                                @endif
+                            @endcan
                         </div>
                     </div>
                 @endforeach

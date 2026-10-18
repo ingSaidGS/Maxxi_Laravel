@@ -19,12 +19,14 @@
             <p class="mb-0 mt-1 text-sm text-gray-500">Unidades de medida disponibles en el sistema.</p>
         </div>
 
-        <a href="{{ route('units.create') }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-            </svg>
-            Nueva unidad
-        </a>
+        @can('manage-catalog')
+            <a href="{{ route('units.create') }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                </svg>
+                Nueva unidad
+            </a>
+        @endcan
     </div>
 
     {{-- Mensaje de éxito --}}
@@ -62,12 +64,14 @@
             </svg>
             <p class="mb-1 mt-3 font-medium text-gray-700">Aún no hay unidades registradas</p>
             <p class="mb-0 text-sm text-gray-500">Crea la primera unidad de medida para empezar.</p>
-            <a href="{{ route('units.create') }}" class="{{ $botones['primario'] }} mt-4">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                </svg>
-                Nueva unidad
-            </a>
+            @can('manage-catalog')
+                <a href="{{ route('units.create') }}" class="{{ $botones['primario'] }} mt-4">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nueva unidad
+                </a>
+            @endcan
         </div>
     @else
         {{-- Filtros: búsqueda libre + estado --}}
@@ -150,23 +154,26 @@
                                 <td data-href-ignore class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('units.show', $unit) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                                        <a href="{{ route('units.edit', $unit) }}" class="{{ $botones['marino'] }}">Editar</a>
 
-                                        @if ($unit->active)
-                                            <form action="{{ route('units.destroy', $unit) }}" method="POST"
-                                                  data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                            </form>
-                                        @else
-                                            <form action="{{ route('units.restore', $unit) }}" method="POST"
-                                                  data-unit-action="restore" data-unit-name="{{ $unit->name }}">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                            </form>
-                                        @endif
+                                        @can('manage-catalog')
+                                            <a href="{{ route('units.edit', $unit) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                            @if ($unit->active)
+                                                <form action="{{ route('units.destroy', $unit) }}" method="POST"
+                                                      data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                </form>
+                                            @else
+                                                <form action="{{ route('units.restore', $unit) }}" method="POST"
+                                                      data-unit-action="restore" data-unit-name="{{ $unit->name }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                </form>
+                                            @endif
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -197,23 +204,26 @@
 
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                             <a href="{{ route('units.show', $unit) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                            <a href="{{ route('units.edit', $unit) }}" class="{{ $botones['marino'] }}">Editar</a>
 
-                            @if ($unit->active)
-                                <form action="{{ route('units.destroy', $unit) }}" method="POST"
-                                      data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                </form>
-                            @else
-                                <form action="{{ route('units.restore', $unit) }}" method="POST"
-                                      data-unit-action="restore" data-unit-name="{{ $unit->name }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                </form>
-                            @endif
+                            @can('manage-catalog')
+                                <a href="{{ route('units.edit', $unit) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                @if ($unit->active)
+                                    <form action="{{ route('units.destroy', $unit) }}" method="POST"
+                                          data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('units.restore', $unit) }}" method="POST"
+                                          data-unit-action="restore" data-unit-name="{{ $unit->name }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                    </form>
+                                @endif
+                            @endcan
                         </div>
                     </div>
                 @endforeach

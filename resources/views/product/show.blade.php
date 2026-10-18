@@ -93,12 +93,14 @@
                 </svg>
                 Volver al listado
             </a>
-            <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
-                </svg>
-                Editar
-            </a>
+            @can('manage-catalog')
+                <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                    </svg>
+                    Editar
+                </a>
+            @endcan
         </div>
     </div>
 
@@ -192,26 +194,29 @@
             </div>
 
             @if ($purchasePresentation)
-                <div>
-                    <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Operaciones</dt>
-                    <dd class="mt-1">
-                        <button type="button" id="stock-toggle"
-                                class="{{ $botones['secundario-sm'] }}"
-                                aria-expanded="false" aria-controls="stock-form">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                            </svg>
-                            Actualizar stock
-                        </button>
-                    </dd>
-                </div>
+                @can('manage-catalog')
+                    <div>
+                        <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Operaciones</dt>
+                        <dd class="mt-1">
+                            <button type="button" id="stock-toggle"
+                                    class="{{ $botones['secundario-sm'] }}"
+                                    aria-expanded="false" aria-controls="stock-form">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                Actualizar stock
+                            </button>
+                        </dd>
+                    </div>
+                @endcan
             @endif
         </dl>
     </div>
 
     {{-- Formulario de actualización de stock --}}
     @if ($purchasePresentation)
-        <div id="stock-form" class="mt-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6" hidden>
+        @can('manage-catalog')
+            <div id="stock-form" class="mt-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6" hidden>
             <h2 class="mb-1 text-lg font-semibold text-gray-800">Actualizar stock</h2>
             <p class="mb-4 text-sm text-gray-500">Indica los paquetes de compra y las unidades sueltas.</p>
 
@@ -250,7 +255,8 @@
                     <button type="button" id="stock-cancel" class="{{ $botones['secundario'] }} w-full sm:w-auto">Cancelar</button>
                 </div>
             </form>
-        </div>
+            </div>
+        @endcan
     @endif
 
     {{-- Presentaciones del producto --}}
@@ -258,12 +264,14 @@
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="mb-0 text-lg font-semibold text-gray-800">Presentaciones</h2>
 
-            <a href="{{ route('product-presentations.create', ['product_id' => $product->id]) }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                </svg>
-                Nueva presentación
-            </a>
+            @can('manage-catalog')
+                <a href="{{ route('product-presentations.create', ['product_id' => $product->id]) }}" class="{{ $botones['primario'] }} w-full sm:w-auto">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    Nueva presentación
+                </a>
+            @endcan
         </div>
 
         @if ($product->presentations->isEmpty())
@@ -274,12 +282,14 @@
                 </svg>
                 <p class="mb-1 mt-3 font-medium text-gray-700">Este producto no tiene presentaciones</p>
                 <p class="mb-0 text-sm text-gray-500">Crea la primera presentación para empezar.</p>
-                <a href="{{ route('product-presentations.create', ['product_id' => $product->id]) }}" class="{{ $botones['primario'] }} mt-4">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                    Nueva presentación
-                </a>
+                @can('manage-catalog')
+                    <a href="{{ route('product-presentations.create', ['product_id' => $product->id]) }}" class="{{ $botones['primario'] }} mt-4">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                        </svg>
+                        Nueva presentación
+                    </a>
+                @endcan
             </div>
         @else
             {{-- Filtros: búsqueda libre + estado --}}
@@ -363,23 +373,26 @@
                                     <td data-href-ignore class="px-4 py-3">
                                         <div class="flex items-center justify-end gap-2">
                                             <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
-                                            <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
 
-                                            @if ($presentation->active)
-                                                <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
-                                                      data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                                </form>
-                                            @else
-                                                <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
-                                                      data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                                </form>
-                                            @endif
+                                            @can('manage-catalog')
+                                                <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
+
+                                                @if ($presentation->active)
+                                                    <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
+                                                          data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                    </form>
+                                                @else
+                                                    <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
+                                                          data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                    </form>
+                                                @endif
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -409,23 +422,26 @@
 
                             <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                                 <a href="{{ route('product-presentations.show', $presentation) }}" class="{{ $botones['secundario-sm'] }}">Ver</a>
-                                <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
 
-                                @if ($presentation->active)
-                                    <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
-                                          data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
-                                    </form>
-                                @else
-                                    <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
-                                          data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
-                                    </form>
-                                @endif
+                                @can('manage-catalog')
+                                    <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino-sm'] }}">Editar</a>
+
+                                    @if ($presentation->active)
+                                        <form action="{{ route('product-presentations.destroy', $presentation) }}" method="POST"
+                                              data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                        </form>
+                                    @else
+                                        <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
+                                              data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                        </form>
+                                    @endif
+                                @endcan
                             </div>
                         </div>
                     @endforeach

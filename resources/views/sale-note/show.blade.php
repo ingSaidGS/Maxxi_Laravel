@@ -209,32 +209,45 @@
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <a href="{{ route('sale-notes.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                </svg>
-                Volver al listado
-            </a>
+            @can('manage-sale-notes')
+                <a href="{{ route('sale-notes.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                    Volver al listado
+                </a>
+            @else
+                {{-- El empleado no puede abrir el índice de notas; su vía de
+                     entrada es la hoja de alistamiento, así que vuelve ahí. --}}
+                <a href="{{ route('sale-preparations.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                    Volver a preparación
+                </a>
+            @endcan
 
             @if ($saleNote->status === 'pendiente')
-                <a href="{{ route('sale-notes.edit', $saleNote) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
-                    </svg>
-                    Editar
-                </a>
-                <button type="button" id="open-deliver" class="{{ $botones['entregar'] }} w-full sm:w-auto">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H18.75m-2.25 3.75H14.25m4.5-3.75V6.75A2.25 2.25 0 0016.5 4.5h-6A2.25 2.25 0 008.25 6.75v4.5m0 0H3.375A1.125 1.125 0 002.25 12.375v1.5c0 .621.504 1.125 1.125 1.125h1.5" />
-                    </svg>
-                    Entregar
-                </button>
-                <button type="button" id="open-cancel" class="{{ $botones['peligro'] }} w-full sm:w-auto">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Anular
-                </button>
+                @can('manage-sale-notes')
+                    <a href="{{ route('sale-notes.edit', $saleNote) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                        </svg>
+                        Editar
+                    </a>
+                    <button type="button" id="open-deliver" class="{{ $botones['entregar'] }} w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H18.75m-2.25 3.75H14.25m4.5-3.75V6.75A2.25 2.25 0 0016.5 4.5h-6A2.25 2.25 0 008.25 6.75v4.5m0 0H3.375A1.125 1.125 0 002.25 12.375v1.5c0 .621.504 1.125 1.125 1.125h1.5" />
+                        </svg>
+                        Entregar
+                    </button>
+                    <button type="button" id="open-cancel" class="{{ $botones['peligro'] }} w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Anular
+                    </button>
+                @endcan
             @elseif ($saleNote->status === 'entregada' && $saleNote->sale)
                 <a href="{{ route('sales.show', $saleNote->sale) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -376,13 +389,15 @@
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <h2 class="mb-0 text-lg font-semibold text-gray-800">Detalle de la nota</h2>
             @if ($saleNote->status === 'pendiente')
-                <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">Puedes agregar, quitar o reactivar productos</span>
-                <button type="button" data-open-add-detail class="{{ $botones['primario'] }} ml-auto w-full sm:w-auto">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                    </svg>
-                    Agregar producto
-                </button>
+                @can('manage-sale-notes')
+                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">Puedes agregar, quitar o reactivar productos</span>
+                    <button type="button" data-open-add-detail class="{{ $botones['primario'] }} ml-auto w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                        </svg>
+                        Agregar producto
+                    </button>
+                @endcan
             @endif
         </div>
 
@@ -394,12 +409,14 @@
                 </svg>
                 <p class="mb-0 mt-3 font-medium text-gray-700">Esta nota no tiene detalles registrados</p>
                 @if ($saleNote->status === 'pendiente')
-                    <button type="button" data-open-add-detail class="{{ $botones['primario'] }} mt-4">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
-                        </svg>
-                        Agregar producto
-                    </button>
+                    @can('manage-sale-notes')
+                        <button type="button" data-open-add-detail class="{{ $botones['primario'] }} mt-4">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                            </svg>
+                            Agregar producto
+                        </button>
+                    @endcan
                 @endif
             </div>
         @else
@@ -414,7 +431,9 @@
                             <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Subtotal</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Estado</th>
                             @if ($saleNote->status === 'pendiente')
-                                <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
+                                @can('manage-sale-notes')
+                                    <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
+                                @endcan
                             @endif
                         </tr>
                     </thead>
@@ -433,32 +452,34 @@
                                     @endif
                                 </td>
                                 @if ($saleNote->status === 'pendiente')
-                                    <td class="px-4 py-3">
-                                        <div class="flex justify-end gap-2">
-                                            @if ($detail->active)
-                                                <button type="button" data-quantity-edit="{{ $detail->id }}"
-                                                        class="{{ $botones['marino'] }} px-2.5 py-1.5 text-xs">
-                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6h16M4.5 12h16M4.5 18h10" />
-                                                    </svg>
-                                                    Cantidad
-                                                </button>
-                                                <form method="POST" action="{{ route('sale-notes.details.deactivate', [$saleNote, $detail]) }}"
-                                                      data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
-                                                </form>
-                                            @else
-                                                <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
-                                                      data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
+                                    @can('manage-sale-notes')
+                                        <td class="px-4 py-3">
+                                            <div class="flex justify-end gap-2">
+                                                @if ($detail->active)
+                                                    <button type="button" data-quantity-edit="{{ $detail->id }}"
+                                                            class="{{ $botones['marino'] }} px-2.5 py-1.5 text-xs">
+                                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6h16M4.5 12h16M4.5 18h10" />
+                                                        </svg>
+                                                        Cantidad
+                                                    </button>
+                                                    <form method="POST" action="{{ route('sale-notes.details.deactivate', [$saleNote, $detail]) }}"
+                                                          data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
+                                                    </form>
+                                                @else
+                                                    <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
+                                                          data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    @endcan
                                 @endif
                             </tr>
                         @endforeach
@@ -483,30 +504,32 @@
                         <p class="mb-0 mt-2 text-sm text-gray-500">Subtotal: <span data-detail-subtotal class="font-semibold tabular-nums text-gray-800">Bs. {{ $detail->subtotal }}</span></p>
 
                         @if ($saleNote->status === 'pendiente')
-                            <div class="mt-3 flex justify-end gap-2">
-                                @if ($detail->active)
-                                    <button type="button" data-quantity-edit="{{ $detail->id }}"
-                                            class="{{ $botones['marino'] }} px-2.5 py-1.5 text-xs">
-                                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6h16M4.5 12h16M4.5 18h10" />
-                                        </svg>
-                                        Cantidad
-                                    </button>
-                                    <form method="POST" action="{{ route('sale-notes.details.deactivate', [$saleNote, $detail]) }}"
-                                          data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
-                                    </form>
-                                @else
-                                    <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
-                                          data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
-                                    </form>
-                                @endif
-                            </div>
+                            @can('manage-sale-notes')
+                                <div class="mt-3 flex justify-end gap-2">
+                                    @if ($detail->active)
+                                        <button type="button" data-quantity-edit="{{ $detail->id }}"
+                                                class="{{ $botones['marino'] }} px-2.5 py-1.5 text-xs">
+                                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6h16M4.5 12h16M4.5 18h10" />
+                                            </svg>
+                                            Cantidad
+                                        </button>
+                                        <form method="POST" action="{{ route('sale-notes.details.deactivate', [$saleNote, $detail]) }}"
+                                              data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
+                                        </form>
+                                    @else
+                                        <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
+                                              data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endcan
                         @endif
                     </div>
                 @endforeach
@@ -559,7 +582,10 @@
         </div>
     @endif
 
-    {{-- Modal: entregar la nota (captura de pago) --}}
+    {{-- Modales de gestión (entregar, anular, quitar/reactivar línea,
+         modificar cantidad y agregar producto). Solo se renderizan para el
+         encargado: el empleado llega a esta ficha en modo lectura. --}}
+    @can('manage-sale-notes')
     @if ($saleNote->status === 'pendiente')
         <x-modal name="deliver-sale-note" max-width="lg" focusable>
             <form id="deliver-form" method="POST" action="{{ route('sale-notes.entregar', $saleNote) }}">
@@ -825,6 +851,7 @@
             </form>
         </x-modal>
     @endif
+    @endcan
 
     <script>
         (function () {

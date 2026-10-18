@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SaleNote;
+use App\Models\SaleNoteDetail;
 use App\Services\SalePreparationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
@@ -57,5 +60,48 @@ class SalePreparationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Registra un escaneo del lector de códigos sobre una nota pendiente.
+     *
+     * El lector llega como un POST con el código de barras; el service valida
+     * que corresponda a un empaque pequeño de la nota y suma 1 al contador de
+     * alistamiento. Responde JSON con el avance de la línea y de la nota.
+     */
+    public function scan(Request $request, SaleNote $saleNote): JsonResponse
+    {
+        $validated = $request->validate([
+            'barcode' => ['required', 'string', 'max:20'],
+        ]);
+
+        return response()->json($this->preparation->pick($saleNote, $validated['barcode']));
+    }
+
+    /**
+     * Deshace un escaneo del lector (resta 1 al contador de la línea).
+     *
+     * La línea se identifica por su id (no por el código de barras) para que
+     * funcione también en empaques sin código.
+     */
+    public function unscan(SaleNote $saleNote, SaleNoteDetail $saleNoteDetail): JsonResponse
+    {
+        return response()->json($this->preparation->unpickDetail($saleNote, $saleNoteDetail));
+    }
+
+    /**
+     * Marca una línea como alistada por completo (empaques sin código de barras).
+     */
+    public function complete(SaleNote $saleNote, SaleNoteDetail $saleNoteDetail): JsonResponse
+    {
+        return response()->json($this->preparation->completeDetail($saleNote, $saleNoteDetail));
+    }
+
+    /**
+     * Reinicia el alistamiento de una línea (vuelve a 0).
+     */
+    public function reset(SaleNote $saleNote, SaleNoteDetail $saleNoteDetail): JsonResponse
+    {
+        return response()->json($this->preparation->resetDetail($saleNote, $saleNoteDetail));
     }
 }

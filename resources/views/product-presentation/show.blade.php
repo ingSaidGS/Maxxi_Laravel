@@ -46,12 +46,14 @@
                 </svg>
                 Volver al producto
             </a>
-            <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
-                </svg>
-                Editar
-            </a>
+            @can('manage-catalog')
+                <a href="{{ route('product-presentations.edit', $presentation) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" />
+                    </svg>
+                    Editar
+                </a>
+            @endcan
         </div>
     </div>
 

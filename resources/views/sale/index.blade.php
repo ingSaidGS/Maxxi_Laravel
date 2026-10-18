@@ -256,18 +256,22 @@
                                 <td data-href-ignore class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('sales.show', $sale) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                                        @if ($sale->status === 'fiada')
-                                            <button type="button" data-cobrar
-                                                    data-action="{{ route('sales.cobrar', $sale) }}"
-                                                    data-sale-id="{{ $sale->id }}"
-                                                    data-customer="{{ $sale->customer_name ?: '—' }}"
-                                                    data-total="{{ (float) $sale->total }}"
-                                                    data-cash="{{ (float) $sale->cash }}"
-                                                    data-qr="{{ (float) $sale->qr }}"
-                                                    data-debt="{{ (float) $sale->debt }}"
-                                                    class="{{ $botones['cobrar'] }}">Cobrar</button>
-                                        @endif
-                                        <a href="{{ route('sales.edit', $sale) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                        @can('manage-sales')
+                                            @if ($sale->status === 'fiada')
+                                                <button type="button" data-cobrar
+                                                        data-action="{{ route('sales.cobrar', $sale) }}"
+                                                        data-sale-id="{{ $sale->id }}"
+                                                        data-customer="{{ $sale->customer_name ?: '—' }}"
+                                                        data-total="{{ (float) $sale->total }}"
+                                                        data-cash="{{ (float) $sale->cash }}"
+                                                        data-qr="{{ (float) $sale->qr }}"
+                                                        data-debt="{{ (float) $sale->debt }}"
+                                                        class="{{ $botones['cobrar'] }}">Cobrar</button>
+                                            @endif
+
+                                            <a href="{{ route('sales.edit', $sale) }}" class="{{ $botones['marino'] }}">Editar</a>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -320,18 +324,22 @@
 
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                             <a href="{{ route('sales.show', $sale) }}" class="{{ $botones['secundario'] }}">Ver</a>
-                            @if ($sale->status === 'fiada')
-                                <button type="button" data-cobrar
-                                        data-action="{{ route('sales.cobrar', $sale) }}"
-                                        data-sale-id="{{ $sale->id }}"
-                                        data-customer="{{ $sale->customer_name ?: '—' }}"
-                                        data-total="{{ (float) $sale->total }}"
-                                        data-cash="{{ (float) $sale->cash }}"
-                                        data-qr="{{ (float) $sale->qr }}"
-                                        data-debt="{{ (float) $sale->debt }}"
-                                        class="{{ $botones['cobrar'] }}">Cobrar</button>
-                            @endif
-                            <a href="{{ route('sales.edit', $sale) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                            @can('manage-sales')
+                                @if ($sale->status === 'fiada')
+                                    <button type="button" data-cobrar
+                                            data-action="{{ route('sales.cobrar', $sale) }}"
+                                            data-sale-id="{{ $sale->id }}"
+                                            data-customer="{{ $sale->customer_name ?: '—' }}"
+                                            data-total="{{ (float) $sale->total }}"
+                                            data-cash="{{ (float) $sale->cash }}"
+                                            data-qr="{{ (float) $sale->qr }}"
+                                            data-debt="{{ (float) $sale->debt }}"
+                                            class="{{ $botones['cobrar'] }}">Cobrar</button>
+                                @endif
+
+                                <a href="{{ route('sales.edit', $sale) }}" class="{{ $botones['marino'] }}">Editar</a>
+                            @endcan
                         </div>
                     </div>
                 @endforeach

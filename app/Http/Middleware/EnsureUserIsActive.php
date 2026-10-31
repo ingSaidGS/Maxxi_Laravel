@@ -19,12 +19,17 @@ class EnsureUserIsActive
 {
     /**
      * Handle an incoming request.
+     *
+     * Solo se bloquea cuando "active" es explícitamente false. La columna es
+     * NOT NULL con default true, así que un null únicamente significa que el
+     * atributo no venía cargado en el modelo (p. ej. un usuario recién creado
+     * en memoria), no que la cuenta esté desactivada.
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if ($user === null || $user->active) {
+        if ($user === null || $user->active !== false) {
             return $next($request);
         }
 

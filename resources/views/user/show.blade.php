@@ -3,6 +3,8 @@
     $botones = [
         'secundario' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-2 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
+        'peligro' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1',
+        'exito' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1',
     ];
 @endphp
 
@@ -35,8 +37,38 @@
                 </svg>
                 Editar
             </a>
+
+            @unless ($user->is(auth()->user()))
+                <form method="POST"
+                      action="{{ route($user->active ? 'users.deactivate' : 'users.activate', $user) }}"
+                      class="w-full sm:w-auto"
+                      @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }} w-full sm:w-auto">
+                        {{ $user->active ? 'Desactivar acceso' : 'Activar acceso' }}
+                    </button>
+                </form>
+            @endunless
         </div>
     </div>
+
+    {{-- Mensajes de error (p. ej. no dejar el sistema sin encargados) --}}
+    @if ($errors->any())
+        <div role="alert" class="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
+            </svg>
+            <div>
+                <p class="mb-1 font-semibold">No se pudo completar la acción:</p>
+                <ul class="mb-0 list-disc pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
 
     {{-- Mensaje de éxito --}}
     @if (session('status'))
@@ -68,6 +100,17 @@
                         <span class="inline-flex items-center rounded-full bg-maxxi-navy/10 px-2.5 py-0.5 text-xs font-medium text-maxxi-navy">Encargado</span>
                     @else
                         <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Empleado</span>
+                    @endif
+                </dd>
+            </div>
+
+            <div>
+                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Acceso</dt>
+                <dd class="mt-1 text-sm text-gray-800">
+                    @if ($user->active)
+                        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activo</span>
+                    @else
+                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Inactivo</span>
                     @endif
                 </dd>
             </div>

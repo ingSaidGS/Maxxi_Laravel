@@ -4,6 +4,8 @@
         'primario' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-maxxi-orange px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-maxxi-orange-dark focus:outline-none focus:ring-2 focus:ring-maxxi-orange focus:ring-offset-2',
         'secundario' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
+        'peligro' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1',
+        'exito' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1',
     ];
 @endphp
 
@@ -110,6 +112,7 @@
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Nombre</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Correo</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Rol</th>
+                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Acceso</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Estado</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Registrado</th>
                             <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
@@ -119,7 +122,7 @@
                         @foreach ($users as $user)
                             <tr data-href="{{ route('users.show', $user) }}"
                                 data-user-item
-                                data-search="{{ trim(($user->name ?? '') . ' ' . ($user->email ?? '') . ' ' . ($user->tipo->value ?? '') . ' ' . ($user->tipo->label() ?? '') . ' ' . ($user->email_verified_at ? 'verificado' : 'sin verificar')) }}"
+                                data-search="{{ trim(($user->name ?? '') . ' ' . ($user->email ?? '') . ' ' . ($user->tipo->value ?? '') . ' ' . ($user->tipo->label() ?? '') . ' ' . ($user->email_verified_at ? 'verificado' : 'sin verificar') . ' ' . ($user->active ? 'activo' : 'inactivo')) }}"
                                 class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ $user->name }}</td>
                                 <td class="px-4 py-3 text-gray-600">{{ $user->email }}</td>
@@ -128,6 +131,13 @@
                                         <span class="inline-flex items-center rounded-full bg-maxxi-navy/10 px-2.5 py-0.5 text-xs font-medium text-maxxi-navy">Encargado</span>
                                     @else
                                         <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Empleado</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if ($user->active)
+                                        <span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activo</span>
+                                    @else
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Inactivo</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3">
@@ -142,6 +152,18 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('users.show', $user) }}" class="{{ $botones['secundario'] }}">Ver</a>
                                         <a href="{{ route('users.edit', $user) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                                        @unless ($user->is(auth()->user()))
+                                            <form method="POST"
+                                                  action="{{ route($user->active ? 'users.deactivate' : 'users.activate', $user) }}"
+                                                  @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
+                                                    {{ $user->active ? 'Desactivar' : 'Activar' }}
+                                                </button>
+                                            </form>
+                                        @endunless
                                     </div>
                                 </td>
                             </tr>
@@ -155,7 +177,7 @@
                 @foreach ($users as $user)
                     <div data-href="{{ route('users.show', $user) }}"
                          data-user-item
-                         data-search="{{ trim(($user->name ?? '') . ' ' . ($user->email ?? '') . ' ' . ($user->tipo->value ?? '') . ' ' . ($user->tipo->label() ?? '') . ' ' . ($user->email_verified_at ? 'verificado' : 'sin verificar')) }}"
+                         data-search="{{ trim(($user->name ?? '') . ' ' . ($user->email ?? '') . ' ' . ($user->tipo->value ?? '') . ' ' . ($user->tipo->label() ?? '') . ' ' . ($user->email_verified_at ? 'verificado' : 'sin verificar') . ' ' . ($user->active ? 'activo' : 'inactivo')) }}"
                          class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
@@ -170,6 +192,11 @@
                                 @else
                                     <span class="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Empleado</span>
                                 @endif
+                                @if ($user->active)
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Activo</span>
+                                @else
+                                    <span class="inline-flex shrink-0 items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">Inactivo</span>
+                                @endif
                                 @if ($user->email_verified_at)
                                     <span class="inline-flex shrink-0 items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">Verificado</span>
                                 @else
@@ -181,6 +208,18 @@
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">
                             <a href="{{ route('users.show', $user) }}" class="{{ $botones['secundario'] }}">Ver</a>
                             <a href="{{ route('users.edit', $user) }}" class="{{ $botones['marino'] }}">Editar</a>
+
+                            @unless ($user->is(auth()->user()))
+                                <form method="POST"
+                                      action="{{ route($user->active ? 'users.deactivate' : 'users.activate', $user) }}"
+                                      @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
+                                        {{ $user->active ? 'Desactivar' : 'Activar' }}
+                                    </button>
+                                </form>
+                            @endunless
                         </div>
                     </div>
                 @endforeach

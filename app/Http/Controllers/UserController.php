@@ -6,7 +6,10 @@ use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -16,7 +19,7 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        $users = User::orderBy('name')->get();
+        $users = User::orderByDesc('active')->orderBy('name')->get();
         $userTypes = UserType::cases();
 
         return view('user.index', compact('users', 'userTypes'));
@@ -76,6 +79,15 @@ class UserController extends Controller
     {
         $validated = $request->validate($this->rules($user));
 
+        // Un encargado activo no puede degradarse si es el último que queda:
+        // dejaría el sistema sin quien gestione usuarios y catálogo.
+        if ($this->isLastActiveEncargado($user)
+            && ($validated['tipo'] ?? null) !== UserType::Encargado->value) {
+            throw ValidationException::withMessages([
+                'tipo' => 'Debe quedar al menos un encargado activo en el sistema.',
+            ]);
+        }
+
         if (blank($validated['password'] ?? null)) {
             unset($validated['password']);
         }
@@ -88,10 +100,51 @@ class UserController extends Controller
     }
 
     /**
+     * Activa el acceso de un usuario (alta lógica).
+     */
+    public function activate(User $user): RedirectResponse
+    {
+        $user->update(['active' => true]);
+
+        return redirect()
+            ->route('users.show', $user)
+            ->with('status', 'Usuario activado correctamente.');
+    }
+
+    /**
+     * Desactiva el acceso de un usuario (baja lógica).
+     *
+     * Además de marcar "active" en false, se invalida el "remember_token" y se
+     * eliminan sus sesiones abiertas, para que la expulsión sea inmediata y no
+     * dependa de que expire la sesión.
+     */
+    public function deactivate(Request $request, User $user): RedirectResponse
+    {
+        abort_if($request->user()->is($user), 403, 'No puedes desactivar tu propia cuenta.');
+
+        if ($this->isLastActiveEncargado($user)) {
+            return redirect()
+                ->route('users.show', $user)
+                ->withErrors(['active' => 'Debe quedar al menos un encargado activo en el sistema.']);
+        }
+
+        $user->forceFill([
+            'active' => false,
+            'remember_token' => null,
+        ])->save();
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        return redirect()
+            ->route('users.show', $user)
+            ->with('status', 'Usuario desactivado correctamente.');
+    }
+
+    /**
      * Remove the specified resource from storage.
      *
-     * La tabla "users" no tiene columna "active", así que la baja lógica no aplica
-     * todavía. La ruta de "destroy" se excluye en routes/web.php.
+     * No aplica: la baja de usuarios es lógica mediante "active" y se realiza
+     * con "deactivate()". La ruta de "destroy" se excluye en routes/web.php.
      */
     public function destroy(string $id)
     {
@@ -99,14 +152,27 @@ class UserController extends Controller
     }
 
     /**
+     * Indica si desactivar o degradar al usuario dejaría el sistema sin
+     * encargados activos.
+     */
+    protected function isLastActiveEncargado(User $user): bool
+    {
+        return $user->active
+            && $user->isEncargado()
+            && User::where('active', true)
+                ->where('tipo', UserType::Encargado->value)
+                ->count() <= 1;
+    }
+
+    /**
      * Reglas de validación según las columnas de "users".
      *
      * "name" y "email" son varchar(255) y "email" es único. La contraseña es
-     * obligatoria al crear y opcional al editar (mínimo 8 caracteres, igual que
-     * el registro de Breeze) y debe venir confirmada. El correo se ignora a sí
-     * mismo al editar.
+     * obligatoria al crear y opcional al editar, debe venir confirmada y cumple
+     * la política global definida con "Password::defaults()" en AppServiceProvider.
+     * El correo se ignora a sí mismo al editar.
      *
-     * @return array<string, array<int, string|Rule>>
+     * @return array<string, array<int, mixed>>
      */
     protected function rules(?User $user = null): array
     {
@@ -121,8 +187,8 @@ class UserController extends Controller
             'email' => $email,
             'tipo' => ['required', Rule::enum(UserType::class)],
             'password' => $user !== null
-                ? ['nullable', 'string', 'min:8', 'confirmed']
-                : ['required', 'string', 'min:8', 'confirmed'],
+                ? ['nullable', 'string', Password::defaults(), 'confirmed']
+                : ['required', 'string', Password::defaults(), 'confirmed'],
         ];
     }
 }

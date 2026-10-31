@@ -43,6 +43,13 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
+                // Una cuenta desactivada no puede recuperar el acceso por esta vía.
+                if (! $user->active) {
+                    throw ValidationException::withMessages([
+                        'email' => __('passwords.user'),
+                    ]);
+                }
+
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),

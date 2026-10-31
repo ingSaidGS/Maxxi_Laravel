@@ -42,7 +42,13 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // "active" => true impide que una cuenta desactivada inicie sesión. Se
+        // mantiene el mensaje genérico de Laravel para no revelar si el correo
+        // existe ni si la contraseña era correcta.
+        if (! Auth::attempt([
+            ...$this->only('email', 'password'),
+            'active' => true,
+        ], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

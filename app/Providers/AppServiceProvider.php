@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Política de contraseñas del sistema: aplica al perfil, al
+        // restablecimiento y al CRUD de usuarios (todos usan Password::defaults()).
+        Password::defaults(fn () => Password::min(8)->letters()->numbers());
+
         // Capacidades por rol (Opción A: tipo + Gates).
         //
         // - "manage-catalog":  unidades, productos y presentaciones en modo

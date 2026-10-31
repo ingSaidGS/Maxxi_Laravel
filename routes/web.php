@@ -130,10 +130,11 @@ Route::middleware('auth')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     });
 
-    // Usuarios (gestión de credenciales de acceso). Sin baja física ni lógica: la
-    // tabla "users" no tiene columna "active", por eso "destroy" queda fuera.
-    // Exclusivo del encargado.
+    // Usuarios (gestión de credenciales de acceso). La baja es lógica mediante
+    // "active": no hay baja física ni "destroy". Exclusivo del encargado.
     Route::middleware('can:manage-users')->group(function () {
+        Route::patch('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
+        Route::patch('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
         Route::resource('users', UserController::class)->except('destroy');
     });
 });

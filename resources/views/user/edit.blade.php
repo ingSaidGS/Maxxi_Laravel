@@ -95,7 +95,7 @@
                 <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" placeholder="Dejar en blanco para conservar la actual"
                        @error('password') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('password') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
-                <p class="mt-1 text-xs text-gray-500">Déjala en blanco si no quieres cambiarla.</p>
+                <p class="mt-1 text-xs text-gray-500">Déjala en blanco si no quieres cambiarla. Si la cambias, mínimo 8 caracteres con letras y números.</p>
                 @error('password')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror

@@ -18,18 +18,24 @@ class DatabaseSeeder extends Seeder
     {
         User::firstOrCreate(
             ['email' => 'test@example.com'],
-            ['name' => 'Test User', 'password' => 'password', 'tipo' => UserType::Encargado, 'email_verified_at' => now()],
+            ['name' => 'Test User', 'password' => 'password', 'tipo' => UserType::Encargado, 'active' => true, 'email_verified_at' => now()],
         );
 
-        // Idempotente: si ya existía, se fuerza el rol esperado.
-        User::where('email', 'test@example.com')->update(['tipo' => UserType::Encargado->value]);
+        // Idempotente: si ya existía, se fuerzan el rol y el acceso esperados.
+        User::where('email', 'test@example.com')->update([
+            'tipo' => UserType::Encargado->value,
+            'active' => true,
+        ]);
 
         User::firstOrCreate(
             ['email' => 'cajero@example.com'],
-            ['name' => 'Cajero Maxxi', 'password' => 'password', 'tipo' => UserType::Empleado, 'email_verified_at' => now()],
+            ['name' => 'Cajero Maxxi', 'password' => 'password', 'tipo' => UserType::Empleado, 'active' => true, 'email_verified_at' => now()],
         );
 
-        User::where('email', 'cajero@example.com')->update(['tipo' => UserType::Empleado->value]);
+        User::where('email', 'cajero@example.com')->update([
+            'tipo' => UserType::Empleado->value,
+            'active' => true,
+        ]);
 
         $this->call([
             UnitSeeder::class,

@@ -16,7 +16,7 @@ class SaleSeeder extends Seeder
     {
         $cashier = User::firstOrCreate(
             ['email' => 'cajero@example.com'],
-            ['name' => 'Cajero', 'password' => 'password', 'email_verified_at' => now()],
+            ['name' => 'Cajero', 'password' => 'password', 'active' => true, 'email_verified_at' => now()],
         );
 
         $sales = [

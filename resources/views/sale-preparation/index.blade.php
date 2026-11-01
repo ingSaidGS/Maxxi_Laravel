@@ -352,76 +352,84 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($group['notes'] as $note)
-                                        {{-- Encabezado de la nota: aquí se separa el pedido por nota/cliente --}}
-                                        <tr class="border-t border-gray-200 bg-maxxi-navy/5" data-picking-note-header="{{ $note['sale_note_id'] }}">
-                                            <td colspan="4" class="px-4 py-2.5">
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    <span class="font-semibold text-maxxi-navy">
-                                                        @if ($note['sale_note_id'])
-                                                            <a href="{{ route('sale-notes.show', $note['sale_note_id']) }}" class="hover:text-maxxi-orange">NV #{{ $note['sale_note_id'] }}</a>
-                                                        @else
-                                                            NV —
-                                                        @endif
-                                                    </span>
-                                                    @if ($note['customer'] !== '—')
-                                                        <span class="text-sm text-gray-600">Cliente: <span class="font-medium text-gray-800">{{ $note['customer'] }}</span></span>
-                                                    @endif
-                                                    <span class="ml-auto inline-flex items-center gap-2">
-                                                        <span class="text-xs text-gray-500" data-picking-note-progress="{{ $note['sale_note_id'] }}">{{ $note['lines_complete'] }}/{{ $note['lines_total'] }} alistadas</span>
-                                                        <span data-picking-note-status="{{ $note['sale_note_id'] }}"
-                                                              @class([
-                                                                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                                                                  'bg-gray-100 text-gray-600' => ! $note['packed'],
-                                                                  'bg-emerald-100 text-emerald-700' => $note['packed'],
-                                                              ])>{{ $note['packed'] ? 'Empacado' : 'Pendiente' }}</span>
-                                                    </span>
-                                                </div>
+                                        <tr data-small-note-block data-note-id="{{ $note['sale_note_id'] }}">
+                                            <td colspan="4" class="p-0">
+                                                <table class="mb-0 w-full border-collapse text-sm">
+                                                    <tbody>
+                                                        {{-- Encabezado de la nota: aquí se separa el pedido por nota/cliente --}}
+                                                        <tr class="border-t border-gray-200 bg-maxxi-navy/5" data-picking-note-header="{{ $note['sale_note_id'] }}">
+                                                            <td colspan="4" class="px-4 py-2.5">
+                                                                <div class="flex flex-wrap items-center gap-2">
+                                                                    <span class="font-semibold text-maxxi-navy">
+                                                                        @if ($note['sale_note_id'])
+                                                                            <a href="{{ route('sale-notes.show', $note['sale_note_id']) }}" class="hover:text-maxxi-orange">NV #{{ $note['sale_note_id'] }}</a>
+                                                                        @else
+                                                                            NV —
+                                                                        @endif
+                                                                    </span>
+                                                                    @if ($note['customer'] !== '—')
+                                                                        <span class="text-sm text-gray-600">Cliente: <span class="font-medium text-gray-800">{{ $note['customer'] }}</span></span>
+                                                                    @endif
+                                                                    <span class="ml-auto inline-flex items-center gap-2">
+                                                                        <span class="text-xs text-gray-500" data-picking-note-progress="{{ $note['sale_note_id'] }}">{{ $note['lines_complete'] }}/{{ $note['lines_total'] }} alistadas</span>
+                                                                        <span data-picking-note-status="{{ $note['sale_note_id'] }}"
+                                                                              @class([
+                                                                                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                                                                  'bg-gray-100 text-gray-600' => ! $note['packed'],
+                                                                                  'bg-emerald-100 text-emerald-700' => $note['packed'],
+                                                                              ])>{{ $note['packed'] ? 'Empacado' : 'Pendiente' }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @foreach ($note['items'] as $item)
+                                                            <tr class="border-t border-gray-100 transition hover:bg-maxxi-cream/60 print:break-inside-avoid"
+                                                                data-picking-item
+                                                                data-detail-id="{{ $item['detail_id'] }}"
+                                                                data-note-id="{{ $note['sale_note_id'] }}"
+                                                                data-barcode="{{ $item['barcode'] }}"
+                                                                data-quantity="{{ $item['packages'] }}"
+                                                                data-picked="{{ $item['picked'] }}">
+                                                                <td class="px-4 py-3 font-medium text-gray-800">{{ $item['product'] }}</td>
+                                                                <td class="px-4 py-3 text-gray-600">
+                                                                    {{ $item['unit'] }}
+                                                                    <span class="text-gray-400">(x{{ $item['factor'] }} {{ $item['base_unit_symbol'] }})</span>
+                                                                </td>
+                                                                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-gray-800">
+                                                                    {{ $formatQuantity($item['quantity']) }} {{ $pluralize($item['unit'], $item['quantity']) }}
+                                                                </td>
+                                                                <td class="whitespace-nowrap px-4 py-3 text-right">
+                                                                    <div class="inline-flex items-center gap-2">
+                                                                        <span data-picking-count @class(['font-semibold tabular-nums', 'text-emerald-600' => $item['picked'] >= $item['packages'], 'text-maxxi-orange-dark' => $item['picked'] < $item['packages']])>{{ $item['picked'] }}/{{ $item['packages'] }}</span>
+                                                                        @if (filled($item['barcode']))
+                                                                            {{-- Con código de barras: el deshacer resta 1 al último escaneo. --}}
+                                                                            <button type="button" data-picking-undo @disabled($item['picked'] <= 0)
+                                                                                    aria-label="Deshacer un escaneo" title="Deshacer un escaneo"
+                                                                                    class="{{ $botonDeshacer }}">
+                                                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                                                                                Deshacer
+                                                                            </button>
+                                                                        @else
+                                                                            {{-- Sin código (granel): completa o reinicia el alistado de una vez. --}}
+                                                                            <button type="button" data-picking-auto
+                                                                                    data-class-complete="{{ $botonCompletar }}"
+                                                                                    data-class-reset="{{ $botonReiniciar }}"
+                                                                                    aria-label="{{ $item['picked'] >= $item['packages'] ? 'Reiniciar el alistado' : 'Completar el alistado' }}"
+                                                                                    title="{{ $item['picked'] >= $item['packages'] ? 'Reiniciar el alistado' : 'Completar de una vez' }}"
+                                                                                    class="{{ $item['picked'] >= $item['packages'] ? $botonReiniciar : $botonCompletar }}">
+                                                                                <svg data-picking-auto-check @class(['h-3.5 w-3.5', 'hidden' => $item['picked'] >= $item['packages']]) fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                                                                <svg data-picking-auto-reset @class(['h-3.5 w-3.5', 'hidden' => $item['picked'] < $item['packages']]) fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                                                                <span data-picking-auto-label>{{ $item['picked'] >= $item['packages'] ? 'Reiniciar' : 'Completar' }}</span>
+                                                                            </button>
+                                                                        @endif
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
                                             </td>
                                         </tr>
-                                        @foreach ($note['items'] as $item)
-                                            <tr class="border-t border-gray-100 transition hover:bg-maxxi-cream/60 print:break-inside-avoid"
-                                                data-picking-item
-                                                data-detail-id="{{ $item['detail_id'] }}"
-                                                data-note-id="{{ $note['sale_note_id'] }}"
-                                                data-barcode="{{ $item['barcode'] }}"
-                                                data-quantity="{{ $item['packages'] }}"
-                                                data-picked="{{ $item['picked'] }}">
-                                                <td class="px-4 py-3 font-medium text-gray-800">{{ $item['product'] }}</td>
-                                                <td class="px-4 py-3 text-gray-600">
-                                                    {{ $item['unit'] }}
-                                                    <span class="text-gray-400">(x{{ $item['factor'] }} {{ $item['base_unit_symbol'] }})</span>
-                                                </td>
-                                                <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-gray-800">
-                                                    {{ $formatQuantity($item['quantity']) }} {{ $pluralize($item['unit'], $item['quantity']) }}
-                                                </td>
-                                                <td class="whitespace-nowrap px-4 py-3 text-right">
-                                                    <div class="inline-flex items-center gap-2">
-                                                        <span data-picking-count @class(['font-semibold tabular-nums', 'text-emerald-600' => $item['picked'] >= $item['packages'], 'text-maxxi-orange-dark' => $item['picked'] < $item['packages']])>{{ $item['picked'] }}/{{ $item['packages'] }}</span>
-                                                        @if (filled($item['barcode']))
-                                                            {{-- Con código de barras: el deshacer resta 1 al último escaneo. --}}
-                                                            <button type="button" data-picking-undo @disabled($item['picked'] <= 0)
-                                                                    aria-label="Deshacer un escaneo" title="Deshacer un escaneo"
-                                                                    class="{{ $botonDeshacer }}">
-                                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
-                                                                Deshacer
-                                                            </button>
-                                                        @else
-                                                            {{-- Sin código (granel): completa o reinicia el alistado de una vez. --}}
-                                                            <button type="button" data-picking-auto
-                                                                    data-class-complete="{{ $botonCompletar }}"
-                                                                    data-class-reset="{{ $botonReiniciar }}"
-                                                                    aria-label="{{ $item['picked'] >= $item['packages'] ? 'Reiniciar el alistado' : 'Completar el alistado' }}"
-                                                                    title="{{ $item['picked'] >= $item['packages'] ? 'Reiniciar el alistado' : 'Completar de una vez' }}"
-                                                                    class="{{ $item['picked'] >= $item['packages'] ? $botonReiniciar : $botonCompletar }}">
-                                                                <svg data-picking-auto-check @class(['h-3.5 w-3.5', 'hidden' => $item['picked'] >= $item['packages']]) fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                                                <svg data-picking-auto-reset @class(['h-3.5 w-3.5', 'hidden' => $item['picked'] < $item['packages']]) fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-                                                                <span data-picking-auto-label>{{ $item['picked'] >= $item['packages'] ? 'Reiniciar' : 'Completar' }}</span>
-                                                            </button>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
                                     @endforeach
                                 </tbody>
                             </table>
@@ -430,7 +438,7 @@
                         {{-- Tarjetas (móvil) --}}
                         <div class="space-y-3 md:hidden print:hidden">
                             @foreach ($group['notes'] as $note)
-                                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                                <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" data-small-note-block data-note-id="{{ $note['sale_note_id'] }}">
                                     <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-maxxi-navy/5 px-4 py-3" data-picking-note-header="{{ $note['sale_note_id'] }}">
                                         <span class="font-semibold text-maxxi-navy">
                                             @if ($note['sale_note_id'])
@@ -702,6 +710,15 @@
 
                 noteSelect.addEventListener('change', function () {
                     input.value = '';
+                    var id = this.value;
+
+                    document.querySelectorAll('[data-small-note-block]').forEach(function (block) {
+                        if (!id) {
+                            block.classList.remove('hidden');
+                            return;
+                        }
+                        block.classList.toggle('hidden', block.dataset.noteId !== id);
+                    });
 
                     if (!noteSelect.value) {
                         input.disabled = true;
@@ -718,6 +735,11 @@
                     document.querySelectorAll('[data-picking-note-header="' + noteSelect.value + '"]').forEach(function (header) {
                         header.style.backgroundColor = '#FEF0E1';
                     });
+
+                    var target = document.querySelector('[data-small-note-block][data-note-id="' + noteSelect.value + '"]');
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
 
                     input.focus();
                     setFeedback('Nota seleccionada. Escanea los empaques pequeños.', 'info');

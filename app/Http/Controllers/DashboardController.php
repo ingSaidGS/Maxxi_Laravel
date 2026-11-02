@@ -21,10 +21,11 @@ class DashboardController extends Controller
      */
     public function index(): View
     {
+        $user = auth()->user();
+        $isEmpleado = $user && method_exists($user, 'isEmpleado') && $user->isEmpleado();
         $today = Carbon::today();
         $weekStart = $today->copy()->subDays(6);
 
-        $todayData = $this->reports->forRange($today, $today);
         $weekData = $this->reports->forRange($weekStart, $today);
 
         // Serie de los últimos 7 días, rellenando con 0 los días sin ventas.
@@ -56,14 +57,11 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('dashboard', [
+        $data = [
             'today' => $today,
-            'economic' => $todayData['economic'],
             'trend' => $trend,
             'trendMax' => max(1.0, (float) $trend->max('net')),
             'trendTotal' => (float) $trend->sum('net'),
-            'recentSales' => Sale::with('user')->orderByDesc('sold_at')->limit(5)->get(),
-            'topProducts' => $todayData['topProducts']->take(5),
             'inventory' => [
                 'products' => Product::where('active', true)->count(),
                 'presentations' => ProductPresentation::where('active', true)->count(),
@@ -73,6 +71,17 @@ class DashboardController extends Controller
             'outOfStock' => $outOfStock->take(5),
             'pendingNotesCount' => $pendingNotes->count(),
             'nextDeliveries' => $pendingNotes->take(5),
-        ]);
+            'isEmpleado' => $isEmpleado,
+        ];
+
+        if (! $isEmpleado) {
+            $todayData = $this->reports->forRange($today, $today);
+
+            $data['economic'] = $todayData['economic'];
+            $data['recentSales'] = Sale::with('user')->orderByDesc('sold_at')->limit(5)->get();
+            $data['topProducts'] = $todayData['topProducts']->take(5);
+        }
+
+        return view('dashboard', $data);
     }
 }

@@ -12,72 +12,77 @@
     // Días de la semana en español (evita depender del locale de Carbon).
     $dias = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
 
+    $isEmpleadoView = $isEmpleado ?? (auth()->user() && method_exists(auth()->user(), 'isEmpleado') && auth()->user()->isEmpleado());
+
     // Tarjetas KPI del día. Cada una define color, subtítulo e icono.
-    $kpis = [
-        [
-            'label' => 'Ventas netas',
-            'value' => $money($economic['net']),
-            'subtitle' => 'Bruto '.$money($economic['gross']),
-            'card' => 'border-maxxi-orange/30 bg-maxxi-orange/5',
-            'iconBox' => 'bg-maxxi-orange/15 text-maxxi-orange-dark',
-            'labelClass' => 'text-maxxi-orange-dark',
-            'valueClass' => 'text-maxxi-orange-dark',
-            'paths' => ['M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
-        ],
-        [
-            'label' => 'Efectivo',
-            'value' => $money($economic['cash']),
-            'subtitle' => null,
-            'card' => 'border-green-200 bg-green-50/60',
-            'iconBox' => 'bg-green-100 text-green-600',
-            'labelClass' => 'text-green-600',
-            'valueClass' => 'text-green-600',
-            'paths' => ['M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3'],
-        ],
-        [
-            'label' => 'QR',
-            'value' => $money($economic['qr']),
-            'subtitle' => null,
-            'card' => 'border-blue-200 bg-blue-50/60',
-            'iconBox' => 'bg-blue-100 text-blue-600',
-            'labelClass' => 'text-blue-600',
-            'valueClass' => 'text-blue-600',
-            'paths' => [
-                'M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z',
-                'M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z',
+    $kpis = [];
+    if (! $isEmpleadoView && isset($economic) && is_array($economic)) {
+        $kpis = [
+            [
+                'label' => 'Ventas netas',
+                'value' => $money($economic['net'] ?? 0),
+                'subtitle' => 'Bruto '.$money($economic['gross'] ?? 0),
+                'card' => 'border-maxxi-orange/30 bg-maxxi-orange/5',
+                'iconBox' => 'bg-maxxi-orange/15 text-maxxi-orange-dark',
+                'labelClass' => 'text-maxxi-orange-dark',
+                'valueClass' => 'text-maxxi-orange-dark',
+                'paths' => ['M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
             ],
-        ],
-        [
-            'label' => 'Fiado',
-            'value' => $money($economic['debt']),
-            'subtitle' => null,
-            'card' => 'border-amber-200 bg-amber-50/60',
-            'iconBox' => 'bg-amber-100 text-amber-600',
-            'labelClass' => 'text-amber-600',
-            'valueClass' => 'text-amber-600',
-            'paths' => ['M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'],
-        ],
-        [
-            'label' => 'Ventas',
-            'value' => $qty($economic['sales_count']),
-            'subtitle' => 'Ticket prom. '.$money($economic['avg_ticket']),
-            'card' => 'border-gray-200 bg-white',
-            'iconBox' => 'bg-maxxi-navy/10 text-maxxi-navy',
-            'labelClass' => 'text-gray-400',
-            'valueClass' => 'text-gray-800',
-            'paths' => ['M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
-        ],
-        [
-            'label' => 'Ganancia bruta',
-            'value' => $money($economic['profit']),
-            'subtitle' => 'Margen '.number_format($economic['margin'], 1, '.', ',').'%',
-            'card' => 'border-emerald-200 bg-emerald-50/60',
-            'iconBox' => 'bg-emerald-100 text-emerald-600',
-            'labelClass' => 'text-emerald-600',
-            'valueClass' => 'text-emerald-700',
-            'paths' => ['M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941'],
-        ],
-    ];
+            [
+                'label' => 'Efectivo',
+                'value' => $money($economic['cash'] ?? 0),
+                'subtitle' => null,
+                'card' => 'border-green-200 bg-green-50/60',
+                'iconBox' => 'bg-green-100 text-green-600',
+                'labelClass' => 'text-green-600',
+                'valueClass' => 'text-green-600',
+                'paths' => ['M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3'],
+            ],
+            [
+                'label' => 'QR',
+                'value' => $money($economic['qr'] ?? 0),
+                'subtitle' => null,
+                'card' => 'border-blue-200 bg-blue-50/60',
+                'iconBox' => 'bg-blue-100 text-blue-600',
+                'labelClass' => 'text-blue-600',
+                'valueClass' => 'text-blue-600',
+                'paths' => [
+                    'M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z',
+                    'M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z',
+                ],
+            ],
+            [
+                'label' => 'Fiado',
+                'value' => $money($economic['debt'] ?? 0),
+                'subtitle' => null,
+                'card' => 'border-amber-200 bg-amber-50/60',
+                'iconBox' => 'bg-amber-100 text-amber-600',
+                'labelClass' => 'text-amber-600',
+                'valueClass' => 'text-amber-600',
+                'paths' => ['M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'],
+            ],
+            [
+                'label' => 'Ventas',
+                'value' => $qty($economic['sales_count'] ?? 0),
+                'subtitle' => 'Ticket prom. '.$money($economic['avg_ticket'] ?? 0),
+                'card' => 'border-gray-200 bg-white',
+                'iconBox' => 'bg-maxxi-navy/10 text-maxxi-navy',
+                'labelClass' => 'text-gray-400',
+                'valueClass' => 'text-gray-800',
+                'paths' => ['M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+            ],
+            [
+                'label' => 'Ganancia bruta',
+                'value' => $money($economic['profit'] ?? 0),
+                'subtitle' => 'Margen '.number_format($economic['margin'] ?? 0, 1, '.', ',').'%',
+                'card' => 'border-emerald-200 bg-emerald-50/60',
+                'iconBox' => 'bg-emerald-100 text-emerald-600',
+                'labelClass' => 'text-emerald-600',
+                'valueClass' => 'text-emerald-700',
+                'paths' => ['M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941'],
+            ],
+        ];
+    }
 @endphp
 
 <x-layouts.sistema title="Dashboard">
@@ -132,6 +137,7 @@
 
     {{-- 2. Tendencia de la semana + inventario --}}
     <section class="mt-8 grid gap-4 lg:grid-cols-3">
+        @if (! $isEmpleadoView)
         {{-- Últimos 7 días --}}
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-2">
@@ -175,6 +181,7 @@
                 </div>
             @endif
         </div>
+        @endif
 
         {{-- Inventario --}}
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
@@ -217,43 +224,46 @@
     </section>
 
     {{-- 3. Top productos + ventas recientes --}}
+    @if (! $isEmpleadoView && isset($topProducts) && isset($recentSales))
     <section class="mt-8 grid gap-4 lg:grid-cols-3">
-        {{-- Top productos de hoy --}}
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div class="mb-4 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-orange/15 text-maxxi-orange-dark" aria-hidden="true">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-                        </svg>
-                    </span>
-                    <h2 class="mb-0 text-base font-semibold text-maxxi-navy">Top productos de hoy</h2>
+        @if (! $isEmpleadoView && isset($topProducts))
+            {{-- Top productos de hoy --}}
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+                <div class="mb-4 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-orange/15 text-maxxi-orange-dark" aria-hidden="true">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                            </svg>
+                        </span>
+                        <h2 class="mb-0 text-base font-semibold text-maxxi-navy">Top productos de hoy</h2>
+                    </div>
                 </div>
-            </div>
 
-            @if ($topProducts->isEmpty())
-                <div class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center">
-                    <p class="mb-0 text-sm text-gray-500">Sin productos vendidos hoy.</p>
-                </div>
-            @else
-                <ul class="mb-0 list-none space-y-3 p-0">
-                    @foreach ($topProducts as $row)
-                        <li class="flex items-center justify-between gap-3">
-                            <div class="flex min-w-0 items-center gap-2">
-                                <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-maxxi-navy/10 text-xs font-semibold text-maxxi-navy">{{ $loop->iteration }}</span>
-                                <span class="truncate text-sm text-gray-700">{{ $row->product_name }}</span>
-                            </div>
-                            <div class="shrink-0 text-right">
-                                <p class="mb-0 text-sm font-semibold tabular-nums text-maxxi-orange-dark">{{ $money($row->revenue) }}</p>
-                                <p class="mb-0 text-[11px] text-gray-500">
-                                    {{ $qty($row->quantity) }}@if ($row->unit_symbol) {{ $row->unit_symbol }}@endif
-                                </p>
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-        </div>
+                @if ($topProducts->isEmpty())
+                    <div class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center">
+                        <p class="mb-0 text-sm text-gray-500">Sin productos vendidos hoy.</p>
+                    </div>
+                @else
+                    <ul class="mb-0 list-none space-y-3 p-0">
+                        @foreach ($topProducts as $row)
+                            <li class="flex items-center justify-between gap-3">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-maxxi-navy/10 text-xs font-semibold text-maxxi-navy">{{ $loop->iteration }}</span>
+                                    <span class="truncate text-sm text-gray-700">{{ $row->product_name }}</span>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="mb-0 text-sm font-semibold tabular-nums text-maxxi-orange-dark">{{ $money($row->revenue) }}</p>
+                                    <p class="mb-0 text-[11px] text-gray-500">
+                                        {{ $qty($row->quantity) }}@if ($row->unit_symbol) {{ $row->unit_symbol }}@endif
+                                    </p>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        @endif
 
         {{-- Ventas recientes --}}
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
@@ -328,6 +338,7 @@
             @endif
         </div>
     </section>
+    @endif
 
     {{-- 4. Notas de venta pendientes --}}
     @if ($pendingNotesCount > 0)

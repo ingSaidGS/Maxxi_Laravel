@@ -77,21 +77,31 @@ Route::middleware('auth')->group(function () {
     Route::resource('product-presentations', ProductPresentationController::class)->only(['show']);
 
     // Ventas (sin borrado físico ni lógico). El detalle se gestiona dentro de
-    // la venta (carrito). El empleado crea y ve; editar y cobrar fiadas es
+    // la venta (carrito). El empleado crea; editar y cobrar fiadas es
     // del encargado. Cobrar en el momento se resuelve en store.
+    Route::middleware('auth')->group(function () {
+        Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
+        Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
+        Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
+        Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+    });
+
     Route::middleware('can:manage-sales')->group(function () {
+        Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
+        Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
         Route::patch('sales/{sale}/cobrar', [SaleController::class, 'cobrar'])->name('sales.cobrar');
         Route::resource('sales', SaleController::class)->except(['index', 'create', 'store', 'show']);
     });
-    Route::resource('sales', SaleController::class)->only(['index', 'create', 'store', 'show']);
+
     Route::get('sales/{sale}/ticket', [SaleController::class, 'ticket'])->name('sales.ticket');
 
     // Compras (cabecera + detalle). El detalle se gestiona dentro de la
-    // compra (carrito). El empleado crea y ve; editar es del encargado.
+    // compra (carrito). El empleado crea; editar es del encargado.
     Route::middleware('can:manage-purchases')->group(function () {
+        Route::get('purchases', [PurchaseController::class, 'index'])->name('purchases.index');
+        Route::get('purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
         Route::resource('purchases', PurchaseController::class)->except(['index', 'create', 'store', 'show']);
     });
-    Route::resource('purchases', PurchaseController::class)->only(['index', 'create', 'store', 'show']);
 
     // Notas de venta (preventa/pedido). Al entregar se genera la venta. El
     // empleado solo ve la ficha (show); crear, editar, entregar y gestionar

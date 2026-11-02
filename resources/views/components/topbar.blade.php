@@ -100,7 +100,7 @@
                         <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm transition hover:bg-maxxi-cream">Perfil</a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="block w-full px-4 py-2 text-left text-sm transition hover:bg-maxxi-cream">Cerrar sesión</button>
+                            <button type="submit" data-pending="Saliendo…" class="block w-full px-4 py-2 text-left text-sm transition hover:bg-maxxi-cream">Cerrar sesión</button>
                         </form>
                     </div>
                 </div>
@@ -135,7 +135,7 @@
                     <a href="{{ route('profile.edit') }}" class="block rounded-md px-3 py-2 text-base font-medium text-white/85 transition hover:bg-white/5 hover:text-maxxi-orange">Perfil</a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white/85 transition hover:bg-white/5 hover:text-maxxi-orange">Cerrar sesión</button>
+                        <button type="submit" data-pending="Saliendo…" class="block w-full rounded-md px-3 py-2 text-left text-base font-medium text-white/85 transition hover:bg-white/5 hover:text-maxxi-orange">Cerrar sesión</button>
                     </form>
                 </div>
             @else

@@ -105,6 +105,35 @@ acción principal de la página → `primario`. Las variantes **sólidas**
 (`peligro-solido`, `exito-solido`) se reservan para el botón de confirmar dentro
 de un modal.
 
+### Estado de envío (spinner + gerundio)
+
+Todo botón que envíe un formulario debe mostrar progreso y evitar el doble
+clic. Para los botones principales usa el componente `x-boton-envio`; recibe la
+variante por `class` y el texto de carga por `pending`:
+
+```blade
+<x-boton-envio pending="Guardando…" class="{{ $botones['primario'] }} w-full sm:w-auto">
+    <svg class="h-4 w-4" ... aria-hidden="true">…</svg>
+    Guardar
+</x-boton-envio>
+```
+
+El componente apila la capa normal y la de carga en la misma celda (`grid`) para
+que el ancho no salte. Al enviar, `resources/js/submit-state.js` deshabilita los
+botones `[type="submit"]` del formulario, alterna la capa visible y anuncia el
+estado en una región `aria-live`.
+
+- Botones secundarios de fila o acciones con etiqueta corta: `data-pending`.
+  `PUT/PATCH` → «Actualizando…», `DELETE` → «Procesando…» / «Dando de baja…».
+- Etiquetas por método si no se indica nada: GET→«Buscando…», POST→«Guardando…»,
+  PUT/PATCH→«Actualizando…», DELETE→«Procesando…».
+- Formularios AJAX que ya gestionan su propio estado: `data-no-loading` en el
+  `<form>` (p. ej. reporte de stock bajo).
+- Las acciones que confirman en un modal deben reenviar con
+  `form.requestSubmit()` (no `form.submit()`), para que el spinner se active.
+  Usa una bandera `bypassX` para que el listener de confirmación no vuelva a
+  abrir el modal.
+
 ## Mensajes (alertas)
 
 **Éxito** (verde) — usa `session('status')`:
@@ -774,6 +803,7 @@ mismo producto pueden compartir `unit` y diferir en el factor (p. ej. arroba de
 - [ ] `show`: ficha de detalle en **una sola tarjeta** con cuadrícula (`sm:grid-cols-2 lg:grid-cols-3`).
 - [ ] Fila/tarjeta navega a su detalle con `data-href` (y `data-href-ignore` en acciones).
 - [ ] Botones según variantes (`primario`, `secundario`, `marino`, `peligro`, `exito`).
+- [ ] Botones de envío con `x-boton-envio` o `data-pending` (spinner + gerundio); formularios AJAX con `data-no-loading`.
 - [ ] Estados con badges, y estado vacío cuando no hay datos.
 - [ ] Montos con prefijo `Bs.`, `tabular-nums` y color por concepto (Total/Efectivo/QR/Fiado); `data-*` numéricos.
 - [ ] Listados con totales: tarjetas KPI (etiqueta + icono de color + valor) arriba del listado.

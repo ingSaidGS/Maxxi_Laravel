@@ -163,14 +163,14 @@
                                                       data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                    <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('units.restore', $unit) }}" method="POST"
                                                       data-unit-action="restore" data-unit-name="{{ $unit->name }}">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                    <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                                 </form>
                                             @endif
                                         @endcan
@@ -213,14 +213,14 @@
                                           data-unit-action="deactivate" data-unit-name="{{ $unit->name }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                        <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                     </form>
                                 @else
                                     <form action="{{ route('units.restore', $unit) }}" method="POST"
                                           data-unit-action="restore" data-unit-name="{{ $unit->name }}">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                        <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                     </form>
                                 @endif
                             @endcan

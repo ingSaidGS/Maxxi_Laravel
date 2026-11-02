@@ -85,7 +85,7 @@
                            autocomplete="off" placeholder="Buscar por proveedor, comprobante o usuario…"
                            class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                 </div>
-                <button type="submit" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
+                <button type="submit" data-pending="Buscando…" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
             </div>
         </div>
 

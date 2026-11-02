@@ -251,7 +251,7 @@
                 </div>
 
                 <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-                    <button type="submit" class="{{ $botones['primario'] }} w-full sm:w-auto">Guardar stock</button>
+                    <x-boton-envio pending="Guardando stock…" class="{{ $botones['primario'] }} w-full sm:w-auto">Guardar stock</x-boton-envio>
                     <button type="button" id="stock-cancel" class="{{ $botones['secundario'] }} w-full sm:w-auto">Cancelar</button>
                 </div>
             </form>
@@ -382,14 +382,14 @@
                                                           data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                        <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                                     </form>
                                                 @else
                                                     <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
                                                           data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                        <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                                     </form>
                                                 @endif
                                             @endcan
@@ -431,14 +431,14 @@
                                               data-presentation-action="deactivate" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                            <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                         </form>
                                     @else
                                         <form action="{{ route('product-presentations.restore', $presentation) }}" method="POST"
                                               data-presentation-action="restore" data-presentation-name="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '')) }}">
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                            <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                         </form>
                                     @endif
                                 @endcan

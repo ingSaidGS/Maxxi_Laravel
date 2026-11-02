@@ -57,7 +57,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <button type="submit" class="{{ $botones['primario'] }}">Actualizar contraseña</button>
+            <x-boton-envio pending="Actualizando contraseña…" class="{{ $botones['primario'] }}">Actualizar contraseña</x-boton-envio>
 
             @if (session('status') === 'password-updated')
                 <span role="status" class="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">

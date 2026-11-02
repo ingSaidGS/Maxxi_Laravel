@@ -80,7 +80,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <button type="submit" class="{{ $botones['primario'] }}">Ver reportes</button>
+                <button type="submit" data-pending="Generando reportes…" class="{{ $botones['primario'] }}">Ver reportes</button>
                 <a href="{{ route('reports.index', ['from' => $today->toDateString(), 'to' => $today->toDateString()]) }}"
                    @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $isToday])>Hoy</a>
                 <a href="{{ route('reports.index', ['from' => $weekStart->toDateString(), 'to' => $today->toDateString()]) }}"
@@ -461,7 +461,7 @@
         </div>
 
         {{-- Filtro por umbral (consulta AJAX, no recarga la página) --}}
-        <form id="low-stock-form" class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 print:hidden" autocomplete="off">
+        <form id="low-stock-form" data-no-loading class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 print:hidden" autocomplete="off">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div class="w-full sm:w-44">
                     <label for="low-stock-threshold" class="mb-1 block text-sm font-medium text-gray-700">Umbral en unidad de compra</label>

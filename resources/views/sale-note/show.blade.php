@@ -467,14 +467,14 @@
                                                           data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
+                                                        <button type="submit" data-pending="Quitando…" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
                                                     </form>
                                                 @else
                                                     <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
                                                           data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
+                                                        <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
                                                     </form>
                                                 @endif
                                             </div>
@@ -518,14 +518,14 @@
                                               data-detail-form data-detail-action="quitar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
+                                            <button type="submit" data-pending="Quitando…" class="{{ $botones['peligro'] }} px-2.5 py-1.5 text-xs">Quitar</button>
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('sale-notes.details.restore', [$saleNote, $detail]) }}"
                                               data-detail-form data-detail-action="reactivar" data-detail-label="{{ $detail->presentation?->product?->name ?? '' }}">
                                             @csrf
                                             @method('PATCH')
-                                            <button type="submit" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
+                                            <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }} px-2.5 py-1.5 text-xs">Reactivar</button>
                                         </form>
                                     @endif
                                 </div>
@@ -655,12 +655,12 @@
 
                 <div class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                    <button type="submit" id="deliver-submit" class="{{ $botones['entregar'] }}" @disabled($activeDetails->isEmpty())>
+                    <x-boton-envio pending="Entregando…" id="deliver-submit" class="{{ $botones['entregar'] }}" @disabled($activeDetails->isEmpty())>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                         </svg>
                         Entregar y generar venta
-                    </button>
+                    </x-boton-envio>
                 </div>
             </form>
         </x-modal>
@@ -687,7 +687,7 @@
 
                 <div class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                    <button type="submit" class="{{ $botones['peligro'] }}">Sí, anular</button>
+                    <button type="submit" data-pending="Anulando…" class="{{ $botones['peligro'] }}">Sí, anular</button>
                 </div>
             </form>
         </x-modal>
@@ -755,7 +755,7 @@
 
                     <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                        <button type="submit" class="{{ $botones['primario'] }}">Guardar cantidad</button>
+                        <x-boton-envio pending="Guardando…" class="{{ $botones['primario'] }}">Guardar cantidad</x-boton-envio>
                     </div>
                 </div>
             </form>
@@ -841,12 +841,12 @@
 
                 <div class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                    <button type="submit" id="add-detail-submit" class="{{ $botones['primario'] }}" @disabled($saleablePresentations->isEmpty())>
+                    <x-boton-envio pending="Agregando…" id="add-detail-submit" class="{{ $botones['primario'] }}" @disabled($saleablePresentations->isEmpty())>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
                         </svg>
                         Agregar
-                    </button>
+                    </x-boton-envio>
                 </div>
             </form>
         </x-modal>
@@ -921,6 +921,7 @@
 
             // Quitar/reactivar línea: intercepta el submit y lo confirma en un modal.
             var pendingDetailForm = null;
+            var bypassDetailConfirm = false;
             var detailTitle = document.getElementById('detail-toggle-title');
             var detailSummary = document.getElementById('detail-toggle-summary');
             var detailConfirm = document.getElementById('detail-toggle-confirm');
@@ -929,6 +930,8 @@
 
             document.querySelectorAll('[data-detail-form]').forEach(function (form) {
                 form.addEventListener('submit', function (event) {
+                    if (bypassDetailConfirm) { return; }
+
                     event.preventDefault();
 
                     pendingDetailForm = form;
@@ -962,7 +965,14 @@
                 if (pendingDetailForm) {
                     var form = pendingDetailForm;
                     pendingDetailForm = null;
-                    form.submit();
+
+                    if (typeof form.requestSubmit === 'function') {
+                        bypassDetailConfirm = true;
+                        form.requestSubmit();
+                        bypassDetailConfirm = false;
+                    } else {
+                        form.submit();
+                    }
                 }
             });
 

@@ -87,7 +87,7 @@
                            autocomplete="off" placeholder="Buscar por cliente, teléfono o usuario…"
                            class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                 </div>
-                <button type="submit" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
+                <button type="submit" data-pending="Buscando…" class="{{ $botones['marino'] }} shrink-0">Buscar</button>
             </div>
         </div>
 
@@ -436,12 +436,12 @@
                 <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'cobro')">
                     Cancelar
                 </button>
-                <button type="submit" class="{{ $botones['primario'] }}">
+                <x-boton-envio pending="Registrando cobro…" class="{{ $botones['primario'] }}">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                     Registrar cobro
-                </button>
+                </x-boton-envio>
             </div>
         </form>
     </x-modal>

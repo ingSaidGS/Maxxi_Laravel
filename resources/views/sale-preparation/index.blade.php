@@ -148,7 +148,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <button type="submit" class="{{ $botones['primario'] }}">Ver preparación</button>
+                <button type="submit" data-pending="Preparando…" class="{{ $botones['primario'] }}">Ver preparación</button>
                 <a href="{{ route('sale-preparations.index', ['date' => $today]) }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $isToday])>Hoy</a>
                 <a href="{{ route('sale-preparations.index', ['date' => $tomorrow]) }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $isTomorrow])>Mañana</a>
                 <a href="{{ route('sale-preparations.index') }}" @class([$botones['marino'], 'ring-2 ring-maxxi-orange ring-offset-1' => $date === null])>Todas</a>

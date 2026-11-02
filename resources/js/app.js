@@ -1,4 +1,5 @@
 import './bootstrap';
+import './submit-state';
 
 import Alpine from 'alpinejs';
 

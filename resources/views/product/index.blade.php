@@ -225,14 +225,14 @@
                                                       data-product-action="deactivate" data-product-name="{{ $product->name }}">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                                    <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                                 </form>
                                             @else
                                                 <form action="{{ route('products.restore', $product) }}" method="POST"
                                                       data-product-action="restore" data-product-name="{{ $product->name }}">
                                                     @csrf
                                                     @method('PATCH')
-                                                    <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                                    <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                                 </form>
                                             @endif
                                         @endcan
@@ -282,14 +282,14 @@
                                           data-product-action="deactivate" data-product-name="{{ $product->name }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="{{ $botones['peligro'] }}">Dar de baja</button>
+                                        <button type="submit" data-pending="Dando de baja…" class="{{ $botones['peligro'] }}">Dar de baja</button>
                                     </form>
                                 @else
                                     <form action="{{ route('products.restore', $product) }}" method="POST"
                                           data-product-action="restore" data-product-name="{{ $product->name }}">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="{{ $botones['exito'] }}">Reactivar</button>
+                                        <button type="submit" data-pending="Reactivando…" class="{{ $botones['exito'] }}">Reactivar</button>
                                     </form>
                                 @endif
                             @endcan

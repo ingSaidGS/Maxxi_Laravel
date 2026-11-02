@@ -70,11 +70,11 @@
         </div>
 
         {{-- Acción principal --}}
-        <button
-            type="submit"
+        <x-boton-envio
+            pending="Iniciando sesión…"
             class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-maxxi-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-maxxi-orange-dark focus:outline-none focus:ring-2 focus:ring-maxxi-orange focus:ring-offset-2"
         >
             Iniciar sesión
-        </button>
+        </x-boton-envio>
     </form>
 </x-guest-layout>

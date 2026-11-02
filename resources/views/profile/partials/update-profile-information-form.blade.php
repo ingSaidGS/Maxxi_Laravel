@@ -70,7 +70,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <button type="submit" class="{{ $botones['primario'] }}">Guardar</button>
+            <x-boton-envio pending="Guardando…" class="{{ $botones['primario'] }}">Guardar</x-boton-envio>
 
             @if (session('status') === 'profile-updated')
                 <span role="status" class="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">

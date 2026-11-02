@@ -159,7 +159,7 @@
                                                   @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
                                                 @csrf
                                                 @method('PATCH')
-                                                <button type="submit" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
+                                                <button type="submit" data-pending="{{ $user->active ? 'Desactivando…' : 'Activando…' }}" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
                                                     {{ $user->active ? 'Desactivar' : 'Activar' }}
                                                 </button>
                                             </form>
@@ -215,7 +215,7 @@
                                       @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
+                                    <button type="submit" data-pending="{{ $user->active ? 'Desactivando…' : 'Activando…' }}" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
                                         {{ $user->active ? 'Desactivar' : 'Activar' }}
                                     </button>
                                 </form>

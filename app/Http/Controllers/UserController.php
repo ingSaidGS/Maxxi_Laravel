@@ -43,7 +43,7 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules(), $this->messages());
 
         User::create($validated);
 
@@ -77,7 +77,7 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): RedirectResponse
     {
-        $validated = $request->validate($this->rules($user));
+        $validated = $request->validate($this->rules($user), $this->messages());
 
         // Un encargado activo no puede degradarse si es el último que queda:
         // dejaría el sistema sin quien gestione usuarios y catálogo.
@@ -172,6 +172,11 @@ class UserController extends Controller
      * la política global definida con "Password::defaults()" en AppServiceProvider.
      * El correo se ignora a sí mismo al editar.
      *
+     * El horario de acceso es opcional, pero debe venir completo (entrada y
+     * salida) o vacío. La hora de salida debe ser estrictamente posterior a la
+     * de entrada: se rechazan tanto los rangos de duración cero como los que
+     * cruzan la medianoche (inicio > fin).
+     *
      * @return array<string, array<int, mixed>>
      */
     protected function rules(?User $user = null): array
@@ -186,9 +191,23 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => $email,
             'tipo' => ['required', Rule::enum(UserType::class)],
+            'access_start_time' => ['nullable', 'date_format:H:i', 'required_with:access_end_time'],
+            'access_end_time' => ['nullable', 'date_format:H:i', 'required_with:access_start_time', 'after:access_start_time'],
             'password' => $user !== null
                 ? ['nullable', 'string', Password::defaults(), 'confirmed']
                 : ['required', 'string', Password::defaults(), 'confirmed'],
+        ];
+    }
+
+    /**
+     * Mensajes personalizados para las reglas de validación.
+     *
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'access_end_time.after' => 'La hora de salida debe ser posterior a la hora de entrada.',
         ];
     }
 }

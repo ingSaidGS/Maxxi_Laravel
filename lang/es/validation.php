@@ -193,6 +193,8 @@ return [
         'password' => 'contraseña',
         'password_confirmation' => 'confirmación de contraseña',
         'current_password' => 'contraseña actual',
+        'access_start_time' => 'hora de entrada',
+        'access_end_time' => 'hora de salida',
 
         'base_unit_id' => 'unidad base',
         'product_id' => 'producto',

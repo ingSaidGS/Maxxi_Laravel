@@ -108,6 +108,36 @@
             </div>
         </div>
 
+        {{-- Horario de acceso (solo aplica a empleados) --}}
+        <div class="mt-6">
+            <h2 class="mb-1 text-sm font-semibold text-gray-800">Horario de acceso</h2>
+            <p class="mb-4 text-xs text-gray-500">Solo aplica a empleados. Déjalo vacío para permitir el acceso sin restricción. La hora de salida debe ser posterior a la hora de entrada.</p>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="access_start_time" class="mb-1 block text-sm font-medium text-gray-700">Hora de entrada</label>
+                    <input type="time" id="access_start_time" name="access_start_time" value="{{ old('access_start_time', $user->access_start_time ? substr($user->access_start_time, 0, 5) : '') }}"
+                           @error('access_start_time') aria-invalid="true" @enderror
+                           class="block w-full rounded-lg shadow-sm focus:ring-2 @error('access_start_time') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                    @error('access_start_time')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="access_end_time" class="mb-1 block text-sm font-medium text-gray-700">Hora de salida</label>
+                    <input type="time" id="access_end_time" name="access_end_time" value="{{ old('access_end_time', $user->access_end_time ? substr($user->access_end_time, 0, 5) : '') }}"
+                           @error('access_end_time') aria-invalid="true" @enderror
+                           class="block w-full rounded-lg shadow-sm focus:ring-2 @error('access_end_time') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                    @error('access_end_time')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <p id="access-schedule-error" class="mt-3 hidden text-sm text-red-600" role="alert"></p>
+        </div>
+
         <div class="mt-6 flex flex-col gap-2 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
             <a href="{{ route('users.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">Cancelar</a>
             <x-boton-envio pending="Actualizando usuario…" class="{{ $botones['primario'] }} w-full sm:w-auto">
@@ -155,6 +185,43 @@
             var summary = document.getElementById('confirm-user-summary');
             var confirmButton = document.getElementById('confirm-user-button');
             var bypassConfirm = false;
+            var accessStartInput = document.getElementById('access_start_time');
+            var accessEndInput = document.getElementById('access_end_time');
+            var scheduleError = document.getElementById('access-schedule-error');
+
+            function validateSchedule() {
+                var start = (accessStartInput?.value || '');
+                var end = (accessEndInput?.value || '');
+                var invalid = start !== '' && end !== '' && start >= end;
+
+                if (scheduleError) {
+                    scheduleError.textContent = invalid ? 'La hora de salida debe ser posterior a la hora de entrada.' : '';
+                    scheduleError.classList.toggle('hidden', !invalid);
+                }
+
+                [accessStartInput, accessEndInput].forEach(function (input) {
+                    if (!input) { return; }
+
+                    if (invalid) {
+                        input.setAttribute('aria-invalid', 'true');
+                    } else {
+                        input.removeAttribute('aria-invalid');
+                    }
+                });
+
+                if (invalid && accessEndInput) {
+                    accessEndInput.focus();
+                }
+
+                return !invalid;
+            }
+
+            [accessStartInput, accessEndInput].forEach(function (input) {
+                if (!input) { return; }
+
+                input.addEventListener('change', validateSchedule);
+                input.addEventListener('input', validateSchedule);
+            });
 
             function openConfirmModal() {
                 var name = (nameInput?.value || '').trim();
@@ -184,11 +251,16 @@
                 if (bypassConfirm) { return; }
 
                 event.preventDefault();
+
+                if (!validateSchedule()) { return; }
+
                 openConfirmModal();
             });
 
             confirmButton.addEventListener('click', function () {
                 window.dispatchEvent(new CustomEvent('close-modal', { detail: 'confirm-user' }));
+
+                if (!validateSchedule()) { return; }
 
                 bypassConfirm = true;
 

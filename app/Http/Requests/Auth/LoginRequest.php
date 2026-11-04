@@ -57,6 +57,21 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        // Credenciales válidas, pero el empleado está fuera de su horario de
+        // acceso: se cierra la sesión recién iniciada y se informa el motivo.
+        // Los encargados y los usuarios sin horario pasan sin restricción.
+        $user = Auth::user();
+
+        if ($user !== null && ! $user->isWithinAccessSchedule()) {
+            Auth::guard('web')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Estás fuera de tu horario de acceso. Tu horario es de '
+                    .substr($user->access_start_time, 0, 5).' a '
+                    .substr($user->access_end_time, 0, 5).'.',
+            ]);
+        }
     }
 
     /**

@@ -116,6 +116,11 @@
             </div>
 
             <div>
+                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Horario de acceso</dt>
+                <dd class="mt-1 text-sm text-gray-800">{{ $user->accessScheduleLabel() }}</dd>
+            </div>
+
+            <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Estado</dt>
                 <dd class="mt-1 text-sm text-gray-800">
                     @if ($user->email_verified_at)

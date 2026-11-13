@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -33,6 +34,8 @@ class UnitController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeName($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:10', 'unique:units,name'],
             'symbol' => ['required', 'string', 'max:3', 'unique:units,symbol'],
@@ -67,6 +70,8 @@ class UnitController extends Controller
      */
     public function update(Request $request, Unit $unit): RedirectResponse
     {
+        $this->normalizeName($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:10', Rule::unique('units', 'name')->ignore($unit->id)],
             'symbol' => ['required', 'string', 'max:3', Rule::unique('units', 'symbol')->ignore($unit->id)],
@@ -106,5 +111,24 @@ class UnitController extends Controller
         return redirect()
             ->route('units.index')
             ->with('status', 'Unidad reactivada correctamente.');
+    }
+
+    /**
+     * Normaliza el nombre antes de validar: sin espacios en los extremos, primera
+     * letra en mayúscula y el resto en minúscula ("  KILOGRAMO " -> "Kilogramo").
+     *
+     * Se hace ANTES de la validación para que la regla "unique" compare el valor
+     * que realmente se guardará (en PostgreSQL la comparación distingue mayúsculas,
+     * así que "caja" no chocaría con "Caja" si se normalizara después).
+     */
+    private function normalizeName(Request $request): void
+    {
+        $name = $request->input('name');
+
+        if (! is_string($name)) {
+            return;
+        }
+
+        $request->merge(['name' => Str::ucfirst(Str::lower(trim($name)))]);
     }
 }

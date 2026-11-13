@@ -56,9 +56,16 @@
             <input type="hidden" name="product_id" value="{{ $presentation->product_id }}">
         </div>
 
+        {{-- Leyenda de campos obligatorios --}}
+        <p class="mb-4 mt-0 text-xs text-gray-500">
+            Los campos marcados con <span class="font-semibold text-red-600" aria-hidden="true">*</span> son obligatorios.
+        </p>
+
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
-                <label for="unit_id" class="mb-1 block text-sm font-medium text-gray-700">Unidad</label>
+                <label for="unit_id" class="mb-1 block text-sm font-medium text-gray-700">
+                    Unidad <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <select id="unit_id" name="unit_id" required
                         @error('unit_id') aria-invalid="true" @enderror
                         class="block w-full rounded-lg shadow-sm focus:ring-2 @error('unit_id') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror">
@@ -75,7 +82,9 @@
             </div>
 
             <div>
-                <label for="conversion_factor" class="mb-1 block text-sm font-medium text-gray-700">Factor de conversión</label>
+                <label for="conversion_factor" class="mb-1 block text-sm font-medium text-gray-700">
+                    Factor de conversión <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="number" id="conversion_factor" name="conversion_factor"
                        value="{{ old('conversion_factor', $presentation->conversion_factor) }}" step="1" min="0" required placeholder="Ej.: 24"
                        @error('conversion_factor') aria-invalid="true" @enderror
@@ -86,7 +95,9 @@
             </div>
 
             <div class="sm:col-span-2">
-                <span class="mb-2 block text-sm font-medium text-gray-700">Tamaño</span>
+                <span class="mb-2 block text-sm font-medium text-gray-700">
+                    Tamaño <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </span>
                 <div class="flex flex-wrap gap-x-8 gap-y-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
                     <label for="presentation_size_pequeno" class="mb-0 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
                         <input type="radio" id="presentation_size_pequeno" name="presentation_size" value="pequeño" required
@@ -127,7 +138,9 @@
             </div>
 
             <div id="reference-purchase-cost-wrapper" class="sm:col-span-2" hidden>
-                <label for="reference_purchase_cost" class="mb-1 block text-sm font-medium text-gray-700">Costo de compra de referencia</label>
+                <label for="reference_purchase_cost" class="mb-1 block text-sm font-medium text-gray-700">
+                    Costo de compra de referencia <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="number" id="reference_purchase_cost" name="reference_purchase_cost"
                        value="{{ old('reference_purchase_cost', $presentation->reference_purchase_cost) }}" step="0.01" min="0" @required(old('purchase_enable', $presentation->purchase_enable)) placeholder="Ej.: 120.00"
                        @error('reference_purchase_cost') aria-invalid="true" @enderror
@@ -149,7 +162,9 @@
             </div>
 
             <div>
-                <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">Ganancia deseada</label>
+                <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">
+                    Ganancia deseada <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="number" id="desired_profit" name="desired_profit"
                        value="{{ old('desired_profit', $presentation->desired_profit) }}" step="0.1" min="0" required placeholder="Ej.: 5.50"
                        @error('desired_profit') aria-invalid="true" @enderror

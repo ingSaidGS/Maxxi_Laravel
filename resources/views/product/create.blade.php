@@ -46,9 +46,16 @@
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
 
+        {{-- Leyenda de campos obligatorios --}}
+        <p class="mb-4 mt-0 text-xs text-gray-500">
+            Los campos marcados con <span class="font-semibold text-red-600" aria-hidden="true">*</span> son obligatorios.
+        </p>
+
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
-                <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
+                <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+                    Nombre <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="20" required autofocus autocomplete="off" placeholder="Ej.: Arroz"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
@@ -58,7 +65,9 @@
             </div>
 
             <div>
-                <label for="base_unit_id" class="mb-1 block text-sm font-medium text-gray-700">Unidad base</label>
+                <label for="base_unit_id" class="mb-1 block text-sm font-medium text-gray-700">
+                    Unidad base <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <select id="base_unit_id" name="base_unit_id" required
                         @error('base_unit_id') aria-invalid="true" @enderror
                         class="block w-full rounded-lg shadow-sm focus:ring-2 @error('base_unit_id') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror">

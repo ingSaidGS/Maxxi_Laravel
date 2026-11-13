@@ -6,6 +6,9 @@
         'marino' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1',
         'peligro' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-1',
         'exito' => 'inline-flex items-center justify-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-1',
+        // Sólidas: solo para el botón de confirmar en un modal.
+        'peligro-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
+        'exito-solido' => 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
     ];
 @endphp
 
@@ -156,7 +159,7 @@
                                         @unless ($user->is(auth()->user()))
                                             <form method="POST"
                                                   action="{{ route($user->active ? 'users.deactivate' : 'users.activate', $user) }}"
-                                                  @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
+                                                  data-user-action="{{ $user->active ? 'deactivate' : 'restore' }}" data-user-name="{{ $user->name }}">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button type="submit" data-pending="{{ $user->active ? 'Desactivando…' : 'Activando…' }}" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
@@ -212,7 +215,7 @@
                             @unless ($user->is(auth()->user()))
                                 <form method="POST"
                                       action="{{ route($user->active ? 'users.deactivate' : 'users.activate', $user) }}"
-                                      @if ($user->active) onsubmit="return confirm('¿Desactivar este usuario? Se cerrará su sesión de inmediato.');" @endif>
+                                      data-user-action="{{ $user->active ? 'deactivate' : 'restore' }}" data-user-name="{{ $user->name }}">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" data-pending="{{ $user->active ? 'Desactivando…' : 'Activando…' }}" class="{{ $user->active ? $botones['peligro'] : $botones['exito'] }}">
@@ -234,6 +237,116 @@
             <p class="mb-0 mt-3 text-sm text-gray-500">No hay usuarios que coincidan con la búsqueda.</p>
         </div>
     @endif
+
+    {{-- Confirmación de desactivación (un solo modal para todas las filas) --}}
+    <x-modal name="confirm-user-deactivate" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Desactivar este usuario?</h2>
+                    <p id="confirm-user-deactivate-summary" class="mb-0 text-sm text-gray-600"></p>
+                    <p class="mb-0 mt-1 text-sm text-gray-500">Se cerrará su sesión de inmediato y no podrá ingresar hasta que lo actives de nuevo.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-user-deactivate')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-user-deactivate-button" class="{{ $botones['peligro-solido'] }}">
+                    Sí, desactivar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación de activación --}}
+    <x-modal name="confirm-user-restore" max-width="md" focusable>
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Activar este usuario?</h2>
+                    <p id="confirm-user-restore-summary" class="mb-0 text-sm text-gray-600"></p>
+                    <p class="mb-0 mt-1 text-sm text-gray-500">Podrá volver a ingresar al sistema.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-user-restore')">
+                    Cancelar
+                </button>
+                <button type="button" id="confirm-user-restore-button" class="{{ $botones['exito-solido'] }}">
+                    Sí, activar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Confirmación de desactivación/activación por fila --}}
+    <script>
+        (function () {
+            var actionForms = document.querySelectorAll('[data-user-action]');
+            var deactivateSummary = document.getElementById('confirm-user-deactivate-summary');
+            var restoreSummary = document.getElementById('confirm-user-restore-summary');
+            var deactivateButton = document.getElementById('confirm-user-deactivate-button');
+            var restoreButton = document.getElementById('confirm-user-restore-button');
+            var pendingForm = null;
+            var bypassConfirm = false;
+
+            actionForms.forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (bypassConfirm) { return; }
+
+                    event.preventDefault();
+                    pendingForm = form;
+
+                    var name = form.dataset.userName || '';
+
+                    if (form.dataset.userAction === 'deactivate') {
+                        if (deactivateSummary) {
+                            deactivateSummary.textContent = 'Se desactivará al usuario «' + name + '».';
+                        }
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-user-deactivate' }));
+                    } else {
+                        if (restoreSummary) {
+                            restoreSummary.textContent = 'Se activará al usuario «' + name + '».';
+                        }
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-user-restore' }));
+                    }
+                });
+            });
+
+            function submitPending(modalName) {
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: modalName }));
+
+                if (!pendingForm) { return; }
+
+                bypassConfirm = true;
+
+                if (typeof pendingForm.requestSubmit === 'function') {
+                    pendingForm.requestSubmit();
+                } else {
+                    pendingForm.submit();
+                }
+
+                bypassConfirm = false;
+                pendingForm = null;
+            }
+
+            deactivateButton?.addEventListener('click', function () { submitPending('confirm-user-deactivate'); });
+            restoreButton?.addEventListener('click', function () { submitPending('confirm-user-restore'); });
+        })();
+    </script>
 
     {{-- Filtro de búsqueda en cliente --}}
     <script>

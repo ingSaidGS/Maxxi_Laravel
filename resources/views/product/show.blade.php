@@ -37,6 +37,14 @@
         ? $name
         : (preg_match('/[aeiou]$/i', $name) ? $name.'s' : $name.'es');
 
+    // Uso de la presentación según sus banderas de compra/venta: [etiqueta, clases de la píldora].
+    $presentationUsage = fn ($presentation): array => match (true) {
+        $presentation->purchase_enable && $presentation->sale_enable => ['Compra y venta', 'bg-maxxi-navy/10 text-maxxi-navy'],
+        $presentation->purchase_enable => ['Compra', 'bg-blue-100 text-blue-700'],
+        $presentation->sale_enable => ['Venta', 'bg-maxxi-orange/10 text-maxxi-orange-dark'],
+        default => ['Ninguno', 'bg-gray-100 text-gray-600'],
+    };
+
     // Desglose del stock: paquetes de la presentación de compra + unidades sueltas.
     $stock = max(0, (int) $product->stock);
     $stockLabel = (string) $stock;
@@ -313,7 +321,7 @@
                             </svg>
                         </span>
                         <input type="search" id="presentation-filter-search" autocomplete="off"
-                               placeholder="Buscar por unidad, factor, precio o estado…"
+                               placeholder="Buscar por unidad, tamaño, uso, factor, precio o estado…"
                                class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
                     </div>
                 </div>
@@ -349,6 +357,8 @@
                         <thead>
                             <tr class="text-left text-xs uppercase tracking-wide">
                                 <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Unidad</th>
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Tamaño</th>
+                                <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Uso</th>
                                 <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Factor</th>
                                 <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Precio venta</th>
                                 <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
@@ -358,7 +368,7 @@
                             @foreach ($product->presentations as $presentation)
                                 <tr data-href="{{ route('product-presentations.show', $presentation) }}"
                                     data-presentation-item data-active="{{ $presentation->active ? '1' : '0' }}"
-                                    data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
+                                    data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->presentation_size ?? '') . ' ' . $presentationUsage($presentation)[0] . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
                                     class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
                                     <td class="whitespace-nowrap px-4 py-3 font-medium text-gray-800">
                                         @if ($presentation->unit)
@@ -367,6 +377,11 @@
                                         @else
                                             <span class="text-gray-400">—</span>
                                         @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-600">{{ $presentation->presentation_size ? ucfirst($presentation->presentation_size) : '—' }}</td>
+                                    <td class="px-4 py-3">
+                                        @php([$usageLabel, $usageClass] = $presentationUsage($presentation))
+                                        <span class="inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium {{ $usageClass }}">{{ $usageLabel }}</span>
                                     </td>
                                     <td class="px-4 py-3 tabular-nums text-gray-600">{{ $presentation->conversion_factor }}{{ $product->baseUnit ? ' '.$pluralize($product->baseUnit->name, (int) $presentation->conversion_factor) : '' }}</td>
                                     <td class="px-4 py-3 tabular-nums text-gray-800">{{ $presentation->sale_price !== null ? $formatAmount($presentation->sale_price).' Bs.' : '—' }}</td>
@@ -406,7 +421,7 @@
                     @foreach ($product->presentations as $presentation)
                         <div data-href="{{ route('product-presentations.show', $presentation) }}"
                              data-presentation-item data-active="{{ $presentation->active ? '1' : '0' }}"
-                             data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
+                             data-search="{{ trim(($presentation->unit?->name ?? '') . ' ' . ($presentation->unit?->symbol ?? '') . ' ' . ($presentation->conversion_factor ?? '') . ' ' . ($presentation->sale_price ?? '') . ' ' . ($presentation->presentation_size ?? '') . ' ' . $presentationUsage($presentation)[0] . ' ' . ($presentation->active ? 'activa' : 'inactiva')) }}"
                              class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
                             <div>
                                 <p class="mb-0 font-semibold text-gray-800">
@@ -417,6 +432,9 @@
                                     @endif
                                 </p>
                                 <p class="mb-0 mt-0.5 text-sm text-gray-500">Factor: <span class="font-medium text-gray-800">{{ $presentation->conversion_factor }}{{ $product->baseUnit ? ' '.$pluralize($product->baseUnit->name, (int) $presentation->conversion_factor) : '' }}</span></p>
+                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Tamaño: <span class="font-medium text-gray-800">{{ $presentation->presentation_size ? ucfirst($presentation->presentation_size) : '—' }}</span></p>
+                                @php([$usageLabel, $usageClass] = $presentationUsage($presentation))
+                                <p class="mb-0 mt-0.5 text-sm text-gray-500">Uso: <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $usageClass }}">{{ $usageLabel }}</span></p>
                                 <p class="mb-0 mt-0.5 text-sm text-gray-500">Precio venta: <span class="font-medium text-gray-800">{{ $presentation->sale_price !== null ? $formatAmount($presentation->sale_price).' Bs.' : '—' }}</span></p>
                             </div>
 

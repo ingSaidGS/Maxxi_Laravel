@@ -655,7 +655,7 @@
 
                 <div class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                    <x-boton-envio pending="Entregando…" id="deliver-submit" class="{{ $botones['entregar'] }}" @disabled($activeDetails->isEmpty())>
+                    <x-boton-envio pending="Entregando…" id="deliver-submit" class="{{ $botones['entregar'] }}" :disabled="$activeDetails->isEmpty()">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                         </svg>
@@ -841,7 +841,7 @@
 
                 <div class="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button type="button" class="{{ $botones['secundario'] }}" x-on:click="show = false">Cancelar</button>
-                    <x-boton-envio pending="Agregando…" id="add-detail-submit" class="{{ $botones['primario'] }}" @disabled($saleablePresentations->isEmpty())>
+                    <x-boton-envio pending="Agregando…" id="add-detail-submit" class="{{ $botones['primario'] }}" :disabled="$saleablePresentations->isEmpty()">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
                         </svg>

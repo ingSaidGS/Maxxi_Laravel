@@ -231,6 +231,8 @@
             <form action="{{ route('products.stock.update', $product) }}" method="POST">
                 @csrf
                 @method('PATCH')
+                {{-- Stock visto al abrir la ficha: el servidor rechaza el ajuste si cambió entretanto. --}}
+                <input type="hidden" name="expected_stock" value="{{ (int) $product->stock }}" />
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     @if ($purchaseConversionFactor > 1)

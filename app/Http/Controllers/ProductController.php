@@ -117,13 +117,34 @@ class ProductController extends Controller
         $validated = $request->validate([
             'stock_packages' => ['nullable', 'integer', 'min:0'],
             'stock_loose' => ['nullable', 'integer', 'min:0'],
+            'expected_stock' => ['required', 'integer', 'min:0'],
         ]);
 
         $conversionFactor = max(1, (int) $purchasePresentation->conversion_factor);
         $packages = (int) ($validated['stock_packages'] ?? 0);
         $loose = (int) ($validated['stock_loose'] ?? 0);
 
-        $product->update(['stock' => $packages * $conversionFactor + $loose]);
+        // Bloqueo optimista: el ajuste solo se aplica si el stock sigue siendo el
+        // que el encargado vio al abrir el formulario. Si una venta, entrega o
+        // compra lo modificó mientras tanto, el UPDATE no afecta filas y se avisa,
+        // en lugar de sobrescribir (y perder) ese movimiento.
+        $affected = Product::query()
+            ->whereKey($product->id)
+            ->where('stock', (int) $validated['expected_stock'])
+            ->update(['stock' => $packages * $conversionFactor + $loose]);
+
+        if ($affected === 0) {
+            $currentStock = (int) Product::query()->whereKey($product->id)->value('stock');
+
+            // Sin withInput(): el formulario debe volver a mostrar el stock real
+            // actual, no los valores enviados, para que el encargado revise sobre
+            // datos frescos y no reenvíe sin querer el valor desactualizado.
+            return redirect()
+                ->route('products.show', $product)
+                ->withErrors([
+                    'stock' => "El stock cambió mientras editabas (ahora es {$currentStock}). Revisa y vuelve a guardar.",
+                ]);
+        }
 
         return redirect()
             ->route('products.show', $product)

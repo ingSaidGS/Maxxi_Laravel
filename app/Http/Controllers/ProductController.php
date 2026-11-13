@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -44,6 +45,8 @@ class ProductController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeName($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -82,6 +85,8 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product): RedirectResponse
     {
+        $this->normalizeName($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -177,5 +182,23 @@ class ProductController extends Controller
         return redirect()
             ->route('products.index')
             ->with('status', 'Producto reactivado correctamente.');
+    }
+
+    /**
+     * Normaliza el nombre antes de validar: sin espacios en los extremos, primera
+     * letra en mayúscula y el resto en minúscula ("  ARROZ " -> "Arroz").
+     *
+     * Se hace antes de la validación para que se valide el valor que realmente
+     * se guardará (mismo criterio que en UnitController).
+     */
+    private function normalizeName(Request $request): void
+    {
+        $name = $request->input('name');
+
+        if (! is_string($name)) {
+            return;
+        }
+
+        $request->merge(['name' => Str::ucfirst(Str::lower(trim($name)))]);
     }
 }

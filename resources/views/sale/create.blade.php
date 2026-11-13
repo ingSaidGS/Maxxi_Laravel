@@ -27,8 +27,15 @@
         @endif
     </div>
 
+    @php
+        // Los cambios de precio se muestran en su propio modal; el resto de
+        // errores sigue en la alerta general.
+        $priceChanges = $errors->get('price_changes');
+        $otherErrors = collect($errors->messages())->except('price_changes')->flatten();
+    @endphp
+
     {{-- Mensajes de error --}}
-    @if ($errors->any())
+    @if ($otherErrors->isNotEmpty())
         <div role="alert" class="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
@@ -36,7 +43,7 @@
             <div>
                 <p class="mb-1 font-semibold">Revisa los siguientes errores:</p>
                 <ul class="mb-0 list-disc pl-5">
-                    @foreach ($errors->all() as $error)
+                    @foreach ($otherErrors as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
@@ -346,6 +353,46 @@
         </div>
     </x-modal>
 
+    {{-- Modal: el empleado no puede registrar ventas fiadas (pago incompleto) --}}
+    @cannot('manage-sales')
+        <x-modal name="fiada-blocked" max-width="md" focusable>
+            <div class="p-6">
+                <div class="flex items-start gap-4">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="mb-1 text-lg font-semibold text-gray-800">El pago no cubre el total</h2>
+                        <p class="mb-3 text-sm text-gray-600">Como empleado no puedes registrar ventas fiadas. Completa el pago en efectivo, QR o ambos.</p>
+
+                        <dl class="mb-0 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3 text-sm">
+                            <div>
+                                <dt class="mt-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Total</dt>
+                                <dd id="fiada-blocked-total" class="mb-0 mt-0.5 font-semibold tabular-nums text-maxxi-orange-dark">Bs. 0.0</dd>
+                            </div>
+                            <div>
+                                <dt class="mt-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Pagado</dt>
+                                <dd id="fiada-blocked-paid" class="mb-0 mt-0.5 font-semibold tabular-nums text-gray-800">Bs. 0.0</dd>
+                            </div>
+                            <div>
+                                <dt class="mt-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Falta</dt>
+                                <dd id="fiada-blocked-missing" class="mb-0 mt-0.5 font-semibold tabular-nums text-red-600">Bs. 0.0</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button" class="{{ $botones['primario'] }}" x-on:click="$dispatch('close-modal', 'fiada-blocked')">
+                        Completar pago
+                    </button>
+                </div>
+            </div>
+        </x-modal>
+    @endcannot
+
     {{-- Modal: escanear código de barras --}}
     <x-modal name="barcode-scanner" max-width="md">
         <div class="p-5 sm:p-6"
@@ -388,6 +435,37 @@
             </div>
         </div>
     </x-modal>
+
+    {{-- Modal: la venta se rechazó porque cambiaron precios del carrito --}}
+    @if ($priceChanges !== [])
+        <x-modal name="prices-changed" :show="true" max-width="md" focusable>
+            <div class="p-6">
+                <div class="flex items-start gap-4">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </span>
+                    <div class="min-w-0">
+                        <h2 class="mb-1 text-lg font-semibold text-gray-800">Algunos precios cambiaron</h2>
+                        <p class="mb-2 text-sm text-gray-600">La venta <span class="font-semibold">no se registró</span>. Mientras armabas el carrito se actualizaron estos precios:</p>
+                        <ul class="mb-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                            @foreach ($priceChanges as $change)
+                                <li>{{ $change }}</li>
+                            @endforeach
+                        </ul>
+                        <p class="mb-0 text-sm text-gray-600">El carrito ya tiene los precios vigentes. Revisa el total y el pago, y vuelve a guardar.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button type="button" class="{{ $botones['primario'] }}" x-on:click="$dispatch('close-modal', 'prices-changed')">
+                        Revisar carrito
+                    </button>
+                </div>
+            </div>
+        </x-modal>
+    @endif
 
     {{-- Modal: venta registrada con éxito --}}
     @if (session('success'))
@@ -695,6 +773,14 @@
                     hiddenQty.name = 'details[' + index + '][quantity]';
                     hiddenQty.value = item.quantity;
                     hidden.appendChild(hiddenQty);
+
+                    // Precio mostrado: el servidor lo compara con el vigente y
+                    // rechaza la venta si cambió (no se usa como precio de venta).
+                    var hiddenPrice = document.createElement('input');
+                    hiddenPrice.type = 'hidden';
+                    hiddenPrice.name = 'details[' + index + '][unit_price]';
+                    hiddenPrice.value = p.price;
+                    hidden.appendChild(hiddenPrice);
                 });
 
                 if (empty) {
@@ -1156,7 +1242,20 @@
                 // Bloqueo para el empleado: una venta que quede fiada no puede
                 // registrarse (el aviso rojo ya está visible en la sección de pago).
                 if (amounts.fiada && !puedeFiardar) {
-                    if (fiadaBlockedNote) { fiadaBlockedNote.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    var blockedTotal = document.getElementById('fiada-blocked-total');
+                    var blockedPaid = document.getElementById('fiada-blocked-paid');
+                    var blockedMissing = document.getElementById('fiada-blocked-missing');
+
+                    if (blockedTotal) { blockedTotal.textContent = money(amounts.total); }
+                    if (blockedPaid) { blockedPaid.textContent = money(amounts.paid); }
+                    if (blockedMissing) { blockedMissing.textContent = money(amounts.debt); }
+
+                    if (window.Alpine && blockedTotal) {
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'fiada-blocked' }));
+                    } else if (fiadaBlockedNote) {
+                        // Respaldo si el modal no está disponible: lleva al aviso rojo.
+                        fiadaBlockedNote.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                     return;
                 }
 

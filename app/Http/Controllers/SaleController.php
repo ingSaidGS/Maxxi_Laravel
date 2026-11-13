@@ -593,9 +593,14 @@ class SaleController extends Controller
                 Rule::exists('product_presentations', 'id')->where('sale_enable', true),
             ],
             'details.*.quantity' => ['required', 'integer', 'min:1'],
+            // Precio que el cajero vio en el carrito; solo se usa para detectar
+            // cambios de precio, nunca como precio de la venta. Si falta (p. ej.
+            // una pestaña abierta con una versión anterior del formulario), se
+            // trata como precio a revisar en ensurePricesUnchanged().
+            'details.*.unit_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $presentations = ProductPresentation::with('product')
+        $presentations = ProductPresentation::with(['product.baseUnit', 'unit'])
             ->whereIn('id', collect($validated['details'])->pluck('presentation_id'))
             ->get()
             ->keyBy('id');
@@ -612,9 +617,61 @@ class SaleController extends Controller
             $details[] = [
                 'presentation' => $presentation,
                 'quantity' => (int) $row['quantity'],
+                'shown_price' => isset($row['unit_price']) ? round((float) $row['unit_price'], 1) : null,
             ];
         }
 
+        $this->ensurePricesUnchanged($details);
+
         return $details;
+    }
+
+    /**
+     * Rechaza la venta si el precio de alguna línea cambió desde que se armó el
+     * carrito (p. ej. una compra recalculó el precio de venta mientras tanto).
+     *
+     * El precio de la venta siempre es el del catálogo; esta comprobación evita
+     * cobrar un importe distinto al que el cajero vio y confirmó en pantalla. Al
+     * volver al formulario, el carrito se reconstruye con los precios actuales.
+     *
+     * Los mensajes van en la clave "price_changes" para que la vista los muestre
+     * en un modal dedicado (y no en la alerta general de errores).
+     *
+     * @param  array<int, array{presentation: ProductPresentation, quantity: int, shown_price: float|null}>  $details
+     *
+     * @throws ValidationException
+     */
+    protected function ensurePricesUnchanged(array $details): void
+    {
+        $changes = [];
+
+        foreach ($details as $detail) {
+            $presentation = $detail['presentation'];
+            $currentPrice = round((float) $presentation->sale_price, 1);
+            $shownPrice = $detail['shown_price'];
+
+            if ($shownPrice !== null && abs($currentPrice - $shownPrice) < 0.001) {
+                continue;
+            }
+
+            $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
+            $label = trim(
+                ($presentation->product?->name ?? '—').' — '.($presentation->unit?->name ?? '')
+                .' (x'.$presentation->conversion_factor.($baseUnitSymbol ? ' '.$baseUnitSymbol : '').')'
+            );
+
+            $changes[] = $shownPrice === null
+                ? sprintf('"%s": precio vigente Bs. %s.', $label, number_format($currentPrice, 1, '.', ''))
+                : sprintf(
+                    '"%s": de Bs. %s a Bs. %s.',
+                    $label,
+                    number_format($shownPrice, 1, '.', ''),
+                    number_format($currentPrice, 1, '.', ''),
+                );
+        }
+
+        if ($changes !== []) {
+            throw ValidationException::withMessages(['price_changes' => $changes]);
+        }
     }
 }

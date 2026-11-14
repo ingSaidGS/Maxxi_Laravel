@@ -171,6 +171,17 @@
             </div>
 
             <div>
+                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Reposición</dt>
+                <dd class="mt-1">
+                    @if ($product->single_batch)
+                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700" title="Se da de baja automáticamente cuando una venta deja su stock en 0.">Única vez</span>
+                    @else
+                        <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Se repone</span>
+                    @endif
+                </dd>
+            </div>
+
+            <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Stock</dt>
                 <dd class="mt-1 text-sm font-medium text-gray-800">{{ $stockLabel }}</dd>
             </div>

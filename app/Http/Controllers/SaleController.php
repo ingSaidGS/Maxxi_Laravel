@@ -191,6 +191,12 @@ class SaleController extends Controller
 
             $this->stock->decrementForSale($requirements);
 
+            // Productos "de única vez" que esta venta dejó sin stock: se dan de
+            // baja en la misma transacción (si la venta falla, no se desactivan).
+            $this->stock->deactivateDepletedSingleBatch(
+                collect($requirements)->pluck('product_id')
+            );
+
             return $sale;
         });
 
@@ -212,7 +218,33 @@ class SaleController extends Controller
     {
         $sale->load(['user', 'saleDetails.presentation.product.baseUnit', 'saleDetails.presentation.product.presentations', 'saleDetails.presentation.unit']);
 
-        return view('sale.show', compact('sale'));
+        // Costo de lo vendido y ganancia bruta, con el mismo criterio que
+        // ReportService::economic(): ganancia = total (ya con descuento) - costo.
+        // El costo por unidad base de cada línea usa, en orden: el guardado al
+        // vender, el costo actual de la presentación y el costo base del producto.
+        $costEstimated = false;
+
+        $saleCost = (float) $sale->saleDetails->sum(function ($detail) use (&$costEstimated): float {
+            $presentation = $detail->presentation;
+            $unitCost = (float) $detail->base_unit_cost_at_sale;
+
+            if ($unitCost <= 0) {
+                $factor = (int) ($presentation?->conversion_factor ?? 0);
+                $referenceCost = (float) ($presentation?->reference_purchase_cost ?? 0);
+
+                $unitCost = $factor > 0 && $referenceCost > 0
+                    ? $referenceCost / $factor
+                    : (float) ($presentation?->product?->base_unit_cost ?? 0);
+
+                $costEstimated = $costEstimated || $unitCost > 0;
+            }
+
+            return $unitCost * (int) $detail->base_quantity;
+        });
+
+        $grossProfit = round((float) $sale->total - $saleCost, 1);
+
+        return view('sale.show', compact('sale', 'saleCost', 'grossProfit', 'costEstimated'));
     }
 
     /**

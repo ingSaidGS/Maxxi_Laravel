@@ -88,6 +88,36 @@ class StockService
     }
 
     /**
+     * Da de baja (active = false) los productos "de única vez" que quedaron sin
+     * stock tras una venta directa o la entrega de una nota de venta.
+     *
+     * Solo afecta a productos con "single_batch" en true; el resto llega a 0 y
+     * sigue activo para poder reponerse con compras. Debe llamarse dentro de la
+     * misma transacción que el descuento de stock. El UPDATE es condicional
+     * ("stock <= 0"), así que es seguro ante ventas concurrentes.
+     *
+     * No se usa en el ajuste manual de stock.
+     *
+     * @param  iterable<int, int>  $productIds
+     * @return int cantidad de productos dados de baja
+     */
+    public function deactivateDepletedSingleBatch(iterable $productIds): int
+    {
+        $ids = collect($productIds)->map(fn ($id) => (int) $id)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return Product::query()
+            ->whereIn('id', $ids)
+            ->where('single_batch', true)
+            ->where('active', true)
+            ->where('stock', '<=', 0)
+            ->update(['active' => false]);
+    }
+
+    /**
      * Aborta la operación indicando el producto y el stock disponible.
      *
      * @throws ValidationException

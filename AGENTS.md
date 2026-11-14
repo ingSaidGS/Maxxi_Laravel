@@ -106,8 +106,9 @@ Todas las tablas de negocio tienen `timestamps()` y `down()` con `Schema::dropIf
 - **units:** `id`, `name` varchar(10), `symbol` varchar(3), `active` bool (default true),
   timestamps.
 - **products:** `id`, `name` varchar(20), `base_unit_id` FK→units, `stock` int
-  (default 0), `base_unit_cost` decimal(10,2) (default 0), `active` bool (default true),
-  timestamps. CHECK: `stock >= 0`, `base_unit_cost >= 0`.
+  (default 0), `base_unit_cost` decimal(10,2) (default 0), `single_batch` bool
+  (default false), `active` bool (default true), timestamps. CHECK: `stock >= 0`,
+  `base_unit_cost >= 0`.
 - **product_presentations:** `id`, `product_id` FK→products, `unit_id` FK→units,
   `conversion_factor` int, `purchase_enable` bool, `sale_enable` bool,
   `reference_purchase_cost` decimal(10,2) **nullable**, `desired_profit` decimal(10,1),
@@ -288,7 +289,13 @@ Aplica a perfil, restablecimiento y CRUD de usuarios.
 - Los bloqueos se ordenan por `product_id` ascendente para evitar interbloqueos.
 - El ajuste manual de stock (`PATCH products/{product}/stock`) se expresa en
   `stock_packages * conversion_factor + stock_loose` usando la presentación de compra
-  activa.
+  activa. Es un bloqueo optimista: solo se aplica si el stock sigue siendo
+  `expected_stock` (el visto al abrir el formulario).
+- **Productos de única vez** (`products.single_batch = true`): cuando una **venta
+  directa** o la **entrega de una nota de venta** deja su stock en 0,
+  `StockService::deactivateDepletedSingleBatch()` los da de baja (`active = false`) en
+  la misma transacción. No aplica al ajuste manual de stock. Se reactivan a mano con
+  `restore`.
 
 ### 5.5 Alistamiento / picking (`SalePreparationService`)
 

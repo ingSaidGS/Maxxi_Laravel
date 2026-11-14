@@ -18,6 +18,7 @@ class Product extends Model
         'base_unit_id',
         'stock',
         'base_unit_cost',
+        'single_batch',
         'active',
     ];
 
@@ -31,6 +32,7 @@ class Product extends Model
         return [
             'stock' => 'integer',
             'base_unit_cost' => 'decimal:2',
+            'single_batch' => 'boolean',
             'active' => 'boolean',
         ];
     }

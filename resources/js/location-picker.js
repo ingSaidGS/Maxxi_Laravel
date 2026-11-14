@@ -99,9 +99,16 @@ function initPicker(root) {
     const fallbackEl = root.querySelector('[data-location-fallback]');
     const modalName = root.getAttribute('data-location-modal');
 
-    if (!mapEl || !latInput || !lngInput) {
+    // El mapa es opcional (modo "gps-only" del componente): basta con los inputs
+    // de coordenadas para que funcione la captura por GPS.
+    if (!latInput || !lngInput) {
         return;
     }
+
+    // Sin mapa ni enlace, los mensajes no deben sugerir esas alternativas, y como
+    // las coordenadas van en campos ocultos se muestran en el estado.
+    const hasAlternatives = Boolean(mapEl || linkInput);
+    const coordsHidden = latInput.type === 'hidden';
 
     let map = null;
     let marker = null;
@@ -151,7 +158,7 @@ function initPicker(root) {
     };
 
     const ensureMap = () => {
-        if (map) {
+        if (map || !mapEl) {
             return map;
         }
 
@@ -307,15 +314,24 @@ function initPicker(root) {
                 }
 
                 setStatus(
-                    'Ubicación capturada' + (precision > 0 ? ` (precisión ±${precision} m)` : '')
-                        + '. Si no es exacta, usa el mapa o pega un enlace.',
+                    'Ubicación capturada'
+                        + (coordsHidden ? `: ${toFixed7(latitude)}, ${toFixed7(longitude)}` : '')
+                        + (precision > 0 ? ` (precisión ±${precision} m)` : '')
+                        + (hasAlternatives
+                            ? '. Si no es exacta, usa el mapa o pega un enlace.'
+                            : '. Si no es exacta, vuelve a capturarla.'),
                     precision > 500 ? 'error' : 'ok'
                 );
 
                 gpsButton.disabled = false;
             },
             () => {
-                setStatus('No se pudo obtener la ubicación. Usa el mapa o pega un enlace.', 'error');
+                setStatus(
+                    hasAlternatives
+                        ? 'No se pudo obtener la ubicación. Usa el mapa o pega un enlace.'
+                        : 'No se pudo obtener la ubicación. Revisa el permiso de ubicación del navegador e inténtalo de nuevo.',
+                    'error'
+                );
                 gpsButton.disabled = false;
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }

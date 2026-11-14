@@ -1,12 +1,16 @@
 @props([
     'latitude' => null,
     'longitude' => null,
+    // Solo el botón "Usar mi ubicación": sin mapa, sin enlace y con las
+    // coordenadas en campos ocultos (se muestran como texto al capturarlas).
+    'gpsOnly' => false,
 ])
 
 @php
     $latValue = old('delivery_latitude', $latitude);
     $lngValue = old('delivery_longitude', $longitude);
     $modalName = 'sale-note-location-'.Illuminate\Support\Str::random(8);
+    $hasLocation = is_numeric($latValue) && is_numeric($lngValue);
 @endphp
 
 {{--
@@ -15,7 +19,44 @@
     lo que el formulario que lo contiene los envía igual que antes. El mapa se
     abre en un modal (`x-modal`) con el botón "Buscar en mapa"; también se pueden
     pegar coordenadas/enlaces de Google Maps o usar la ubicación del navegador.
+    Con `gps-only` solo se ofrece "Usar mi ubicación".
 --}}
+@if ($gpsOnly)
+    <div class="mt-5 border-t border-gray-100 pt-5" data-location-picker>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="mb-0 text-sm font-medium text-gray-700">Ubicación de entrega <span class="font-normal text-gray-400">(opcional)</span></p>
+                <p class="mb-0 text-xs text-gray-500">Captura tu ubicación actual con el GPS del dispositivo.</p>
+            </div>
+
+            <button type="button" data-location-gps
+                    class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 px-3 py-1.5 text-sm font-medium text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 w-full sm:w-auto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                Usar mi ubicación
+            </button>
+        </div>
+
+        <input type="hidden" name="delivery_latitude" value="{{ $latValue }}" data-location-latitude />
+        <input type="hidden" name="delivery_longitude" value="{{ $lngValue }}" data-location-longitude />
+
+        <p data-location-status role="status" aria-live="polite"
+           class="mt-2 mb-0 text-xs text-green-700 {{ $hasLocation ? '' : 'hidden' }}">
+            @if ($hasLocation)
+                Ubicación capturada: {{ $latValue }}, {{ $lngValue }}.
+            @endif
+        </p>
+
+        @error('delivery_latitude')
+            <p class="mt-1 mb-0 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+        @error('delivery_longitude')
+            <p class="mt-1 mb-0 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    </div>
+@else
 <div class="mt-5 border-t border-gray-100 pt-5" data-location-picker data-location-modal="{{ $modalName }}">
     <div>
         <p class="mb-0 text-sm font-medium text-gray-700">Ubicación de entrega <span class="font-normal text-gray-400">(opcional)</span></p>
@@ -130,6 +171,7 @@
         </div>
     </x-modal>
 </div>
+@endif
 
 @once
     @vite('resources/js/location-picker.js')

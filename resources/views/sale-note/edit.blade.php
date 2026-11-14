@@ -101,7 +101,8 @@
                 </div>
 
                 <div class="sm:col-span-2">
-                    <x-sale-note.location-picker :latitude="$saleNote->delivery_latitude" :longitude="$saleNote->delivery_longitude" />
+                    {{-- Ubicación de entrega (opcional): solo captura por GPS del dispositivo --}}
+                    <x-sale-note.location-picker :gps-only="true" :latitude="$saleNote->delivery_latitude" :longitude="$saleNote->delivery_longitude" />
                 </div>
 
                 <div class="sm:col-span-2">

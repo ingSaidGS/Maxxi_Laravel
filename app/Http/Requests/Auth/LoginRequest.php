@@ -21,6 +21,20 @@ class LoginRequest extends FormRequest
     }
 
     /**
+     * Normaliza el correo antes de validar: sin espacios y en minúscula.
+     *
+     * Los correos se guardan en minúscula (ver UserController::normalizeInput()),
+     * y en PostgreSQL la comparación distingue mayúsculas, así que sin esto
+     * "Maria@Maxxi.com" no encontraría a "maria@maxxi.com".
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($email = $this->input('email'))) {
+            $this->merge(['email' => Str::lower(trim($email))]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -59,17 +73,15 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
 
         // Credenciales válidas, pero el empleado está fuera de su horario de
-        // acceso: se cierra la sesión recién iniciada y se informa el motivo.
-        // Los encargados y los usuarios sin horario pasan sin restricción.
+        // acceso (o no tiene horario asignado): se cierra la sesión recién
+        // iniciada y se informa el motivo. Los encargados pasan sin restricción.
         $user = Auth::user();
 
         if ($user !== null && ! $user->isWithinAccessSchedule()) {
             Auth::guard('web')->logout();
 
             throw ValidationException::withMessages([
-                'email' => 'Estás fuera de tu horario de acceso. Tu horario es de '
-                    .substr($user->access_start_time, 0, 5).' a '
-                    .substr($user->access_end_time, 0, 5).'.',
+                'email' => $user->accessDeniedMessage(),
             ]);
         }
     }

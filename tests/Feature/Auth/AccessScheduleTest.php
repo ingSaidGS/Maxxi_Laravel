@@ -10,8 +10,8 @@ use Carbon\Carbon;
 |--------------------------------------------------------------------------
 |
 | El fin del rango es exclusivo: con 07:00–19:00 se permite hasta las
-| 18:59:59 y se bloquea desde las 19:00:00. Los encargados y los usuarios
-| sin horario nunca se bloquean.
+| 18:59:59 y se bloquea desde las 19:00:00. Los encargados nunca se
+| bloquean; los empleados sin horario asignado no pueden ingresar.
 |
 */
 
@@ -19,10 +19,48 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-test('un empleado sin horario puede autenticarse a cualquier hora', function () {
+test('un empleado sin horario no puede autenticarse', function () {
+    Carbon::setTestNow('2026-11-04 12:00:00');
+
+    $user = User::factory()->create([
+        'tipo' => UserType::Empleado,
+        'access_start_time' => null,
+        'access_end_time' => null,
+    ]);
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors([
+        'email' => 'Tu cuenta no tiene un horario de acceso asignado. Contacta al encargado.',
+    ]);
+
+    $this->assertGuest();
+});
+
+test('un empleado con sesión abierta y sin horario es expulsado', function () {
+    $user = User::factory()->create([
+        'tipo' => UserType::Empleado,
+        'access_start_time' => null,
+        'access_end_time' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+});
+
+test('un encargado sin horario puede autenticarse a cualquier hora', function () {
     Carbon::setTestNow('2026-11-04 03:00:00');
 
-    $user = User::factory()->create(['tipo' => UserType::Empleado]);
+    $user = User::factory()->create([
+        'tipo' => UserType::Encargado,
+        'access_start_time' => null,
+        'access_end_time' => null,
+    ]);
 
     $this->post('/login', [
         'email' => $user->email,

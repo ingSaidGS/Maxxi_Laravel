@@ -217,7 +217,15 @@ de dejar la sesión iniciada. `bootstrap/app.php` también configura
 
 ### 4.6 Horario de acceso
 
-- Opcional: si `access_start_time` o `access_end_time` es null, no restringe.
+- **Obligatorio para empleados** al crear o editar (`required_if:tipo,empleado` en
+  `UserController::rules()`), también al pasar un encargado a empleado. **Opcional para
+  encargados**.
+- Un **empleado sin horario** (`access_start_time` o `access_end_time` null) **no puede
+  ingresar**: el login lo rechaza y el middleware cierra su sesión, con el mensaje de
+  `User::accessDeniedMessage()`. Solo puede ocurrir con empleados creados antes de que
+  el horario fuera obligatorio; se corrige asignándole horario.
+- `UserFactory` asigna por defecto 00:00–23:59 y el seeder da ese horario a
+  `cajero@example.com` al crearlo, para que no queden bloqueados.
 - Deben venir ambos; la salida debe ser **estrictamente posterior** a la entrada (no se
   permiten rangos que crucen medianoche).
 - El fin del rango es **exclusivo** (07:00–19:00 permite hasta 18:59:59).

@@ -11,14 +11,7 @@
         {{-- Contraseña actual --}}
         <div>
             <label for="update_password_current_password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña actual</label>
-            <input
-                id="update_password_current_password"
-                name="current_password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="Tu contraseña actual"
-                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange"
-            />
+            <x-password-input id="update_password_current_password" name="current_password" error-bag="updatePassword" autocomplete="current-password" placeholder="Tu contraseña actual" />
             @error('current_password', 'updatePassword')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
             @enderror
@@ -27,14 +20,7 @@
         {{-- Nueva contraseña --}}
         <div>
             <label for="update_password_password" class="mb-1 block text-sm font-medium text-gray-700">Nueva contraseña</label>
-            <input
-                id="update_password_password"
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Mínimo 8 caracteres"
-                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange"
-            />
+            <x-password-input id="update_password_password" name="password" error-bag="updatePassword" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
             @error('password', 'updatePassword')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
             @enderror
@@ -43,14 +29,7 @@
         {{-- Confirmar contraseña --}}
         <div>
             <label for="update_password_password_confirmation" class="mb-1 block text-sm font-medium text-gray-700">Confirmar contraseña</label>
-            <input
-                id="update_password_password_confirmation"
-                name="password_confirmation"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Repite la nueva contraseña"
-                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange"
-            />
+            <x-password-input id="update_password_password_confirmation" name="password_confirmation" error-bag="updatePassword" autocomplete="new-password" placeholder="Repite la nueva contraseña" />
             @error('password_confirmation', 'updatePassword')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
             @enderror

@@ -44,9 +44,16 @@
           class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         @csrf
 
+        {{-- Leyenda de campos obligatorios --}}
+        <p class="mb-4 mt-0 text-xs text-gray-500">
+            Los campos marcados con <span class="font-semibold text-red-600" aria-hidden="true">*</span> son obligatorios.
+        </p>
+
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
-                <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre</label>
+                <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+                    Nombre <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="255" required autofocus autocomplete="off" placeholder="Ej.: María López"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
@@ -56,7 +63,9 @@
             </div>
 
             <div>
-                <label for="email" class="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
+                <label for="email" class="mb-1 block text-sm font-medium text-gray-700">
+                    Correo electrónico <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <input type="email" id="email" name="email" value="{{ old('email') }}" maxlength="255" required autocomplete="off" placeholder="Ej.: maria@maxxi.com"
                        @error('email') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('email') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
@@ -66,7 +75,9 @@
             </div>
 
             <div>
-                <label for="tipo" class="mb-1 block text-sm font-medium text-gray-700">Rol</label>
+                <label for="tipo" class="mb-1 block text-sm font-medium text-gray-700">
+                    Rol <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
                 <select id="tipo" name="tipo" required
                         @error('tipo') aria-invalid="true" @enderror
                         class="block w-full rounded-lg shadow-sm focus:ring-2 @error('tipo') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror">
@@ -81,10 +92,10 @@
             </div>
 
             <div>
-                <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
-                <input type="password" id="password" name="password" minlength="8" required autocomplete="new-password" placeholder="Mínimo 8 caracteres"
-                       @error('password') aria-invalid="true" @enderror
-                       class="block w-full rounded-lg shadow-sm focus:ring-2 @error('password') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                <label for="password" class="mb-1 block text-sm font-medium text-gray-700">
+                    Contraseña <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
+                <x-password-input id="password" minlength="8" required autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
                 <p class="mt-1 text-xs text-gray-500">Mínimo 8 caracteres, con letras y números.</p>
                 @error('password')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -92,20 +103,23 @@
             </div>
 
             <div>
-                <label for="password_confirmation" class="mb-1 block text-sm font-medium text-gray-700">Confirmar contraseña</label>
-                <input type="password" id="password_confirmation" name="password_confirmation" minlength="8" required autocomplete="new-password" placeholder="Repite la contraseña"
-                       class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange/40" />
+                <label for="password_confirmation" class="mb-1 block text-sm font-medium text-gray-700">
+                    Confirmar contraseña <span class="font-semibold text-red-600" aria-hidden="true">*</span>
+                </label>
+                <x-password-input id="password_confirmation" error-key="password_confirmation" minlength="8" required autocomplete="new-password" placeholder="Repite la contraseña" />
             </div>
         </div>
 
         {{-- Horario de acceso (solo aplica a empleados) --}}
         <div class="mt-6">
             <h2 class="mb-1 text-sm font-semibold text-gray-800">Horario de acceso</h2>
-            <p class="mb-4 text-xs text-gray-500">Solo aplica a empleados. Déjalo vacío para permitir el acceso sin restricción. La hora de salida debe ser posterior a la hora de entrada.</p>
+            <p class="mb-4 text-xs text-gray-500"><span class="font-medium text-gray-600">Obligatorio para empleados:</span> solo podrán ingresar dentro de este rango. Para encargados es opcional y no restringe su acceso. La hora de salida debe ser posterior a la hora de entrada.</p>
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                    <label for="access_start_time" class="mb-1 block text-sm font-medium text-gray-700">Hora de entrada</label>
+                    <label for="access_start_time" class="mb-1 block text-sm font-medium text-gray-700">
+                        Hora de entrada <span data-schedule-required class="font-semibold text-red-600" aria-hidden="true">*</span>
+                    </label>
                     <input type="time" id="access_start_time" name="access_start_time" value="{{ old('access_start_time') }}"
                            @error('access_start_time') aria-invalid="true" @enderror
                            class="block w-full rounded-lg shadow-sm focus:ring-2 @error('access_start_time') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
@@ -115,7 +129,9 @@
                 </div>
 
                 <div>
-                    <label for="access_end_time" class="mb-1 block text-sm font-medium text-gray-700">Hora de salida</label>
+                    <label for="access_end_time" class="mb-1 block text-sm font-medium text-gray-700">
+                        Hora de salida <span data-schedule-required class="font-semibold text-red-600" aria-hidden="true">*</span>
+                    </label>
                     <input type="time" id="access_end_time" name="access_end_time" value="{{ old('access_end_time') }}"
                            @error('access_end_time') aria-invalid="true" @enderror
                            class="block w-full rounded-lg shadow-sm focus:ring-2 @error('access_end_time') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
@@ -177,14 +193,34 @@
             var accessStartInput = document.getElementById('access_start_time');
             var accessEndInput = document.getElementById('access_end_time');
             var scheduleError = document.getElementById('access-schedule-error');
+            var tipoSelect = document.getElementById('tipo');
+            var scheduleStars = document.querySelectorAll('[data-schedule-required]');
+
+            // El horario es obligatorio solo para empleados (UserController::rules()).
+            function isEmpleado() {
+                return (tipoSelect?.value || '') === @json(\App\Enums\UserType::Empleado->value);
+            }
+
+            function updateScheduleRequirement() {
+                var required = isEmpleado();
+
+                scheduleStars.forEach(function (star) { star.classList.toggle('hidden', !required); });
+                [accessStartInput, accessEndInput].forEach(function (input) {
+                    if (input) { input.required = required; }
+                });
+            }
 
             function validateSchedule() {
                 var start = (accessStartInput?.value || '');
                 var end = (accessEndInput?.value || '');
-                var invalid = start !== '' && end !== '' && start >= end;
+                var missing = isEmpleado() && (start === '' || end === '');
+                var reversed = start !== '' && end !== '' && start >= end;
+                var invalid = missing || reversed;
 
                 if (scheduleError) {
-                    scheduleError.textContent = invalid ? 'La hora de salida debe ser posterior a la hora de entrada.' : '';
+                    scheduleError.textContent = missing
+                        ? 'El horario de acceso es obligatorio para los empleados: indica la hora de entrada y de salida.'
+                        : (reversed ? 'La hora de salida debe ser posterior a la hora de entrada.' : '');
                     scheduleError.classList.toggle('hidden', !invalid);
                 }
 
@@ -198,8 +234,9 @@
                     }
                 });
 
-                if (invalid && accessEndInput) {
-                    accessEndInput.focus();
+                if (invalid) {
+                    var target = missing && accessStartInput && accessStartInput.value === '' ? accessStartInput : accessEndInput;
+                    target?.focus();
                 }
 
                 return !invalid;
@@ -211,6 +248,17 @@
                 input.addEventListener('change', validateSchedule);
                 input.addEventListener('input', validateSchedule);
             });
+
+            tipoSelect?.addEventListener('change', function () {
+                updateScheduleRequirement();
+
+                // Limpia el aviso de "falta horario" si el rol deja de ser empleado.
+                if (!isEmpleado() && scheduleError) {
+                    scheduleError.classList.add('hidden');
+                }
+            });
+
+            updateScheduleRequirement();
 
             function openConfirmModal() {
                 var name = (nameInput?.value || '').trim();

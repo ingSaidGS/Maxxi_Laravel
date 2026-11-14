@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +44,8 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->normalizeInput($request);
+
         $validated = $request->validate($this->rules(), $this->messages());
 
         User::create($validated);
@@ -77,6 +80,8 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): RedirectResponse
     {
+        $this->normalizeInput($request);
+
         $validated = $request->validate($this->rules($user), $this->messages());
 
         // Un encargado activo no puede degradarse si es el último que queda:
@@ -172,8 +177,9 @@ class UserController extends Controller
      * la política global definida con "Password::defaults()" en AppServiceProvider.
      * El correo se ignora a sí mismo al editar.
      *
-     * El horario de acceso es opcional, pero debe venir completo (entrada y
-     * salida) o vacío. La hora de salida debe ser estrictamente posterior a la
+     * El horario de acceso es obligatorio para los empleados y opcional para los
+     * encargados; si se indica, debe venir completo (entrada y salida). La hora
+     * de salida debe ser estrictamente posterior a la
      * de entrada: se rechazan tanto los rangos de duración cero como los que
      * cruzan la medianoche (inicio > fin).
      *
@@ -191,8 +197,10 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => $email,
             'tipo' => ['required', Rule::enum(UserType::class)],
-            'access_start_time' => ['nullable', 'date_format:H:i', 'required_with:access_end_time'],
-            'access_end_time' => ['nullable', 'date_format:H:i', 'required_with:access_start_time', 'after:access_start_time'],
+            // Obligatorio para empleados; opcional para encargados (a quienes
+            // nunca se les restringe el acceso).
+            'access_start_time' => ['nullable', 'required_if:tipo,'.UserType::Empleado->value, 'date_format:H:i', 'required_with:access_end_time'],
+            'access_end_time' => ['nullable', 'required_if:tipo,'.UserType::Empleado->value, 'date_format:H:i', 'required_with:access_start_time', 'after:access_start_time'],
             'password' => $user !== null
                 ? ['nullable', 'string', Password::defaults(), 'confirmed']
                 : ['required', 'string', Password::defaults(), 'confirmed'],
@@ -207,7 +215,35 @@ class UserController extends Controller
     protected function messages(): array
     {
         return [
+            'access_start_time.required_if' => 'La hora de entrada es obligatoria para los empleados.',
+            'access_end_time.required_if' => 'La hora de salida es obligatoria para los empleados.',
             'access_end_time.after' => 'La hora de salida debe ser posterior a la hora de entrada.',
         ];
+    }
+
+    /**
+     * Normaliza nombre y correo antes de validar (la contraseña no se toca).
+     *
+     * - Nombre: sin espacios sobrantes y cada palabra con la primera letra en
+     *   mayúscula y el resto en minúscula ("  mARÍA   lópez " -> "María López").
+     * - Correo: sin espacios y en minúscula ("Maria@Maxxi.com" -> "maria@maxxi.com").
+     *
+     * Se hace antes de la validación para que la regla "unique" del correo
+     * compare el valor que realmente se guardará (en PostgreSQL la comparación
+     * distingue mayúsculas).
+     */
+    private function normalizeInput(Request $request): void
+    {
+        $normalized = [];
+
+        if (is_string($name = $request->input('name'))) {
+            $normalized['name'] = Str::title(Str::lower((string) preg_replace('/\s+/u', ' ', trim($name))));
+        }
+
+        if (is_string($email = $request->input('email'))) {
+            $normalized['email'] = Str::lower(trim($email));
+        }
+
+        $request->merge($normalized);
     }
 }

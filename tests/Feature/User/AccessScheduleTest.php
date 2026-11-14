@@ -68,7 +68,7 @@ test('un encargado puede actualizar el horario de un empleado', function () {
         ->and(substr($empleado->access_end_time, 0, 5))->toBe('18:00');
 });
 
-test('un encargado puede quitar el horario de un empleado', function () {
+test('no se puede quitar el horario de un empleado', function () {
     $empleado = User::factory()->create([
         'tipo' => UserType::Empleado,
         'access_start_time' => '07:00',
@@ -85,13 +85,60 @@ test('un encargado puede quitar el horario de un empleado', function () {
 
     $this->actingAs($this->encargado)
         ->put(route('users.update', $empleado), $payload)
-        ->assertRedirect(route('users.show', $empleado));
+        ->assertSessionHasErrors([
+            'access_start_time' => 'La hora de entrada es obligatoria para los empleados.',
+            'access_end_time' => 'La hora de salida es obligatoria para los empleados.',
+        ]);
 
     $empleado->refresh();
 
-    expect($empleado->access_start_time)->toBeNull()
-        ->and($empleado->access_end_time)->toBeNull()
-        ->and($empleado->accessScheduleLabel())->toBe('Sin restricción');
+    expect(substr($empleado->access_start_time, 0, 5))->toBe('07:00')
+        ->and(substr($empleado->access_end_time, 0, 5))->toBe('19:00');
+});
+
+test('no se puede crear un empleado sin horario de acceso', function () {
+    $this->actingAs($this->encargado)
+        ->post(route('users.store'), accessSchedulePayload([
+            'access_start_time' => null,
+            'access_end_time' => null,
+        ]))
+        ->assertSessionHasErrors(['access_start_time', 'access_end_time']);
+
+    expect(User::where('email', 'empleado-prueba@example.com')->exists())->toBeFalse();
+});
+
+test('un encargado puede crearse sin horario de acceso', function () {
+    $this->actingAs($this->encargado)
+        ->post(route('users.store'), accessSchedulePayload([
+            'email' => 'encargado-prueba@example.com',
+            'tipo' => UserType::Encargado->value,
+            'access_start_time' => null,
+            'access_end_time' => null,
+        ]))
+        ->assertRedirect(route('users.index'));
+
+    $nuevo = User::where('email', 'encargado-prueba@example.com')->firstOrFail();
+
+    expect($nuevo->access_start_time)->toBeNull()
+        ->and($nuevo->accessScheduleLabel())->toBe('Sin restricción');
+});
+
+test('al pasar un encargado a empleado se exige el horario', function () {
+    $otro = User::factory()->create(['tipo' => UserType::Encargado]);
+
+    $payload = accessSchedulePayload([
+        'email' => $otro->email,
+        'access_start_time' => null,
+        'access_end_time' => null,
+    ]);
+
+    unset($payload['password'], $payload['password_confirmation']);
+
+    $this->actingAs($this->encargado)
+        ->put(route('users.update', $otro), $payload)
+        ->assertSessionHasErrors(['access_start_time', 'access_end_time']);
+
+    expect($otro->refresh()->isEncargado())->toBeTrue();
 });
 
 test('la ficha del usuario muestra el horario de acceso', function () {

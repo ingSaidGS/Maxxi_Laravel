@@ -33,15 +33,7 @@
         {{-- Contraseña --}}
         <div>
             <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Contraseña</label>
-            <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autocomplete="current-password"
-                placeholder="Tu contraseña"
-                class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange"
-            />
+            <x-password-input id="password" required autocomplete="current-password" placeholder="Tu contraseña" />
             @error('password')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
             @enderror

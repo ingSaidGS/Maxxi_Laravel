@@ -85,15 +85,20 @@ class User extends Authenticatable
     /**
      * Indica si el usuario puede acceder en el momento indicado.
      *
-     * Los encargados y los usuarios sin horario siempre tienen acceso. El fin
-     * del rango es exclusivo (a las 19:00 ya no se permite el acceso cuando el
-     * horario termina a esa hora). El rango debe tener la entrada antes que la
-     * salida; si los datos almacenados no lo cumplen, no se concede acceso.
+     * Los encargados siempre tienen acceso. Los empleados necesitan un horario:
+     * sin él no se les concede acceso (el horario es obligatorio para ellos). El
+     * fin del rango es exclusivo (a las 19:00 ya no se permite el acceso cuando
+     * el horario termina a esa hora). El rango debe tener la entrada antes que
+     * la salida; si los datos almacenados no lo cumplen, no se concede acceso.
      */
     public function isWithinAccessSchedule(?CarbonInterface $moment = null): bool
     {
-        if ($this->isEncargado() || ! $this->hasAccessSchedule()) {
+        if ($this->isEncargado()) {
             return true;
+        }
+
+        if (! $this->hasAccessSchedule()) {
+            return false;
         }
 
         $now = ($moment ?? now())->format('H:i:s');
@@ -108,10 +113,31 @@ class User extends Authenticatable
      */
     public function accessScheduleLabel(): string
     {
-        if ($this->isEncargado() || ! $this->hasAccessSchedule()) {
+        if ($this->isEncargado()) {
             return 'Sin restricción';
         }
 
+        if (! $this->hasAccessSchedule()) {
+            return 'Sin horario asignado (no puede ingresar)';
+        }
+
         return substr($this->access_start_time, 0, 5).' a '.substr($this->access_end_time, 0, 5);
+    }
+
+    /**
+     * Mensaje para el empleado al que se le niega el acceso por su horario.
+     *
+     * Lo usan el login (LoginRequest) y el middleware EnsureWithinAccessSchedule
+     * para que el texto sea el mismo en ambos casos.
+     */
+    public function accessDeniedMessage(): string
+    {
+        if (! $this->hasAccessSchedule()) {
+            return 'Tu cuenta no tiene un horario de acceso asignado. Contacta al encargado.';
+        }
+
+        return 'Estás fuera de tu horario de acceso. Tu horario es de '
+            .substr($this->access_start_time, 0, 5).' a '
+            .substr($this->access_end_time, 0, 5).'.';
     }
 }

@@ -15,7 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * "remember me". Este middleware se ejecuta en el grupo "web", por lo que
  * expulsa al usuario en la siguiente petición, sin importar por dónde entró.
  *
- * Los encargados y los usuarios sin horario configurado nunca se bloquean.
+ * Los encargados nunca se bloquean. Los empleados sin horario asignado sí: el
+ * horario es obligatorio para ellos.
  */
 class EnsureWithinAccessSchedule
 {
@@ -34,9 +35,7 @@ class EnsureWithinAccessSchedule
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $message = 'Estás fuera de tu horario de acceso. Tu horario es de '
-            .substr($user->access_start_time, 0, 5).' a '
-            .substr($user->access_end_time, 0, 5).'.';
+        $message = $user->accessDeniedMessage();
 
         if ($request->expectsJson()) {
             return response()->json(['message' => $message], 403);

@@ -202,7 +202,7 @@
     @endif
 
     {{-- Montos clave: información prioritaria de la venta --}}
-    <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {{-- Total --}}
         <div class="rounded-xl border border-maxxi-orange/30 bg-maxxi-orange/5 p-4 shadow-sm">
             <div class="flex items-center justify-between gap-2">
@@ -268,6 +268,23 @@
                 </span>
             </div>
             <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums text-amber-800">Bs. {{ $sale->debt }}</p>
+        </div>
+
+        {{-- Ganancia bruta: total (con descuento) - costo de lo vendido --}}
+        @php $profitNegative = $grossProfit < 0; @endphp
+        <div class="rounded-xl border p-4 shadow-sm {{ $profitNegative ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50/60' }}">
+            <div class="flex items-center justify-between gap-2">
+                <p class="mb-0 text-xs font-medium uppercase tracking-wide {{ $profitNegative ? 'text-red-600' : 'text-emerald-700' }}">Ganancia bruta</p>
+                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {{ $profitNegative ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700' }}" aria-hidden="true">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mb-0 mt-2 whitespace-nowrap text-xl font-bold tabular-nums {{ $profitNegative ? 'text-red-700' : 'text-emerald-700' }}">Bs. {{ number_format($grossProfit, 1, '.', '') }}</p>
+            <p class="mb-0 mt-1 text-xs text-gray-500">
+                Costo: Bs. {{ number_format($saleCost, 1, '.', '') }}@if ($costEstimated) · <span title="Alguna línea no tenía costo guardado al vender; se usó el costo actual.">estimado</span>@endif
+            </p>
         </div>
     </div>
 

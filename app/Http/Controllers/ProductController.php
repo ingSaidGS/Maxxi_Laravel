@@ -50,6 +50,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
+            'single_batch' => ['boolean'],
             'active' => ['boolean'],
         ]);
 
@@ -90,6 +91,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:20'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
+            'single_batch' => ['boolean'],
             'active' => ['boolean'],
         ]);
 

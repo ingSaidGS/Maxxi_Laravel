@@ -281,6 +281,12 @@ class SaleNoteService
 
             $this->stock->decrementForSale($requirements);
 
+            // Productos "de única vez" que esta entrega dejó sin stock: se dan de
+            // baja en la misma transacción, igual que en la venta directa.
+            $this->stock->deactivateDepletedSingleBatch(
+                collect($requirements)->pluck('product_id')
+            );
+
             $saleNote->update([
                 'status' => 'entregada',
                 'delivered_at' => now(),

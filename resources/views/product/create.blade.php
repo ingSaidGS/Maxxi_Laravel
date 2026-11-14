@@ -82,6 +82,21 @@
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
+
+            <div class="sm:col-span-2">
+                <label for="single_batch" class="mb-0 flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3">
+                    <input type="hidden" name="single_batch" value="0">
+                    <input type="checkbox" id="single_batch" name="single_batch" value="1" @checked(old('single_batch', false))
+                           class="mt-0.5 h-4 w-4 rounded border-gray-300 text-maxxi-orange focus:ring-maxxi-orange">
+                    <span>
+                        <span class="block text-sm font-medium text-gray-700">Producto de única vez</span>
+                        <span class="block text-xs text-gray-500">Llega una sola vez: cuando una venta deje su stock en 0, se dará de baja automáticamente y no aparecerá en ventas ni compras.</span>
+                    </span>
+                </label>
+                @error('single_batch')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
 
         <div class="mt-6 flex flex-col gap-2 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">

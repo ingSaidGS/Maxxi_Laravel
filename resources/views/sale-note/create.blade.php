@@ -100,8 +100,8 @@
                 </div>
             </div>
 
-            {{-- Ubicación de entrega (opcional): mapa + pin / pegar enlace --}}
-            <x-sale-note.location-picker />
+            {{-- Ubicación de entrega (opcional): solo captura por GPS del dispositivo --}}
+            <x-sale-note.location-picker :gps-only="true" />
         </div>
 
         {{-- Sección: Carrito --}}

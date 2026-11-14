@@ -248,6 +248,19 @@ Aplica a perfil, restablecimiento y CRUD de usuarios.
 - `cobrar`: suma cobros a `cash`/`qr` y recalcula `status`/`debt`; solo aplica a
   ventas `fiada`.
 - `destroy` responde **405** (las ventas no se eliminan).
+- **Verificación del carrito al guardar** (`SaleController::validatedDetails()`): el
+  carrito se carga al abrir el formulario, así que antes de registrar se comprueba:
+  - **Disponibilidad** (`unavailableReason()`): producto y presentación activos,
+    `sale_enable = true` y `sale_price` definido. Si no, la línea se informa en la
+    clave `unavailable`.
+  - **Precio** (`priceChanges()`): el formulario envía `details.*.unit_price` (el
+    precio mostrado); si difiere del vigente, se informa en `price_changes`. El
+    precio guardado es siempre el del catálogo.
+  - Si hay mensajes en cualquiera de las dos claves, la venta se rechaza y
+    `sale/create` los muestra en el modal `cart-changed`; el carrito vuelve sin las
+    líneas no disponibles y con los precios vigentes.
+  - `create()` solo ofrece presentaciones que cumplen la disponibilidad.
+  - Las **notas de venta** no aplican esta verificación.
 
 ### 5.2 Notas de venta (`SaleNoteService`)
 

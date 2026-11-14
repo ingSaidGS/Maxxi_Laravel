@@ -28,10 +28,12 @@
     </div>
 
     @php
-        // Los cambios de precio se muestran en su propio modal; el resto de
-        // errores sigue en la alerta general.
+        // Los cambios del carrito (productos no disponibles y precios cambiados)
+        // se muestran en su propio modal; el resto de errores sigue en la alerta
+        // general.
+        $unavailableLines = $errors->get('unavailable');
         $priceChanges = $errors->get('price_changes');
-        $otherErrors = collect($errors->messages())->except('price_changes')->flatten();
+        $otherErrors = collect($errors->messages())->except(['unavailable', 'price_changes'])->flatten();
     @endphp
 
     {{-- Mensajes de error --}}
@@ -436,9 +438,10 @@
         </div>
     </x-modal>
 
-    {{-- Modal: la venta se rechazó porque cambiaron precios del carrito --}}
-    @if ($priceChanges !== [])
-        <x-modal name="prices-changed" :show="true" max-width="md" focusable>
+    {{-- Modal: la venta se rechazó porque el carrito cambió mientras estaba
+         abierto (productos que ya no se pueden vender y/o precios cambiados). --}}
+    @if ($unavailableLines !== [] || $priceChanges !== [])
+        <x-modal name="cart-changed" :show="true" max-width="md" focusable>
             <div class="p-6">
                 <div class="flex items-start gap-4">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
@@ -447,19 +450,41 @@
                         </svg>
                     </span>
                     <div class="min-w-0">
-                        <h2 class="mb-1 text-lg font-semibold text-gray-800">Algunos precios cambiaron</h2>
-                        <p class="mb-2 text-sm text-gray-600">La venta <span class="font-semibold">no se registró</span>. Mientras armabas el carrito se actualizaron estos precios:</p>
-                        <ul class="mb-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
-                            @foreach ($priceChanges as $change)
-                                <li>{{ $change }}</li>
-                            @endforeach
-                        </ul>
-                        <p class="mb-0 text-sm text-gray-600">El carrito ya tiene los precios vigentes. Revisa el total y el pago, y vuelve a guardar.</p>
+                        <h2 class="mb-1 text-lg font-semibold text-gray-800">
+                            @if ($unavailableLines !== [] && $priceChanges !== [])
+                                Revisa el carrito
+                            @elseif ($unavailableLines !== [])
+                                Algunos productos ya no están disponibles
+                            @else
+                                Algunos precios cambiaron
+                            @endif
+                        </h2>
+                        <p class="mb-3 text-sm text-gray-600">La venta <span class="font-semibold">no se registró</span>. Mientras armabas el carrito hubo cambios:</p>
+
+                        @if ($unavailableLines !== [])
+                            <p class="mb-1 text-sm font-semibold text-gray-700">Se quitaron del carrito:</p>
+                            <ul class="mb-3 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                                @foreach ($unavailableLines as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+
+                        @if ($priceChanges !== [])
+                            <p class="mb-1 text-sm font-semibold text-gray-700">Cambiaron de precio:</p>
+                            <ul class="mb-3 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                                @foreach ($priceChanges as $change)
+                                    <li>{{ $change }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+
+                        <p class="mb-0 text-sm text-gray-600">El carrito ya está actualizado. Revisa el total y el pago, y vuelve a guardar.</p>
                     </div>
                 </div>
 
                 <div class="mt-6 flex justify-end">
-                    <button type="button" class="{{ $botones['primario'] }}" x-on:click="$dispatch('close-modal', 'prices-changed')">
+                    <button type="button" class="{{ $botones['primario'] }}" x-on:click="$dispatch('close-modal', 'cart-changed')">
                         Revisar carrito
                     </button>
                 </div>

@@ -82,9 +82,12 @@ class SaleController extends Controller
      */
     public function create(): View
     {
+        // Mismo criterio que unavailableReason(): solo lo que realmente se puede
+        // vender (sin precio definido se vendería a Bs. 0).
         $presentations = ProductPresentation::with(['product.baseUnit', 'unit'])
             ->where('sale_enable', true)
             ->where('active', true)
+            ->whereNotNull('sale_price')
             ->whereHas('product', function ($query) {
                 $query->where('active', true);
             })
@@ -611,24 +614,28 @@ class SaleController extends Controller
     /**
      * Valida y resuelve las líneas del carrito.
      *
-     * Solo se aceptan presentaciones con "sale_enable" activo.
+     * Además de la validación de formato, comprueba que cada presentación siga
+     * disponible para la venta (ensureLinesAvailable) y que su precio no haya
+     * cambiado desde que se armó el carrito (priceChanges). Si algo falla, la
+     * venta se rechaza con mensajes en las claves "unavailable" y/o
+     * "price_changes", que la vista muestra en un modal dedicado.
      *
-     * @return array<int, array{presentation: ProductPresentation, quantity: int}>
+     * @return array<int, array{presentation: ProductPresentation, quantity: int, shown_price: float|null}>
+     *
+     * @throws ValidationException
      */
     protected function validatedDetails(Request $request): array
     {
         $validated = $request->validate([
             'details' => ['required', 'array', 'min:1'],
-            'details.*.presentation_id' => [
-                'required',
-                'integer',
-                Rule::exists('product_presentations', 'id')->where('sale_enable', true),
-            ],
+            // Solo se exige que exista: la disponibilidad (activa, venta
+            // habilitada, con precio) se comprueba después con un mensaje claro.
+            'details.*.presentation_id' => ['required', 'integer', Rule::exists('product_presentations', 'id')],
             'details.*.quantity' => ['required', 'integer', 'min:1'],
             // Precio que el cajero vio en el carrito; solo se usa para detectar
             // cambios de precio, nunca como precio de la venta. Si falta (p. ej.
             // una pestaña abierta con una versión anterior del formulario), se
-            // trata como precio a revisar en ensurePricesUnchanged().
+            // trata como precio a revisar en priceChanges().
             'details.*.unit_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -638,11 +645,20 @@ class SaleController extends Controller
             ->keyBy('id');
 
         $details = [];
+        $unavailable = [];
 
         foreach ($validated['details'] as $row) {
             $presentation = $presentations->get($row['presentation_id']);
 
             if ($presentation === null) {
+                continue;
+            }
+
+            $reason = $this->unavailableReason($presentation);
+
+            if ($reason !== null) {
+                $unavailable[] = sprintf('"%s": %s', $this->presentationLabel($presentation), $reason);
+
                 continue;
             }
 
@@ -653,27 +669,50 @@ class SaleController extends Controller
             ];
         }
 
-        $this->ensurePricesUnchanged($details);
+        $messages = array_filter([
+            'unavailable' => $unavailable,
+            'price_changes' => $this->priceChanges($details),
+        ]);
+
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
+        }
 
         return $details;
     }
 
     /**
-     * Rechaza la venta si el precio de alguna línea cambió desde que se armó el
-     * carrito (p. ej. una compra recalculó el precio de venta mientras tanto).
+     * Motivo por el que una presentación ya no puede venderse, o null si está
+     * disponible.
+     *
+     * Cubre los cambios que pueden ocurrir mientras el carrito está abierto: el
+     * producto o la presentación dados de baja (a mano o por agotarse un producto
+     * "de única vez"), la venta deshabilitada o el precio de venta sin definir
+     * (que de otro modo se vendería a Bs. 0).
+     */
+    protected function unavailableReason(ProductPresentation $presentation): ?string
+    {
+        return match (true) {
+            $presentation->product === null || ! $presentation->product->active => 'el producto fue dado de baja.',
+            ! $presentation->active => 'la presentación fue dada de baja.',
+            ! $presentation->sale_enable => 'la venta de esta presentación fue deshabilitada.',
+            $presentation->sale_price === null => 'no tiene precio de venta definido.',
+            default => null,
+        };
+    }
+
+    /**
+     * Cambios de precio desde que se armó el carrito (p. ej. una compra
+     * recalculó el precio de venta mientras tanto).
      *
      * El precio de la venta siempre es el del catálogo; esta comprobación evita
      * cobrar un importe distinto al que el cajero vio y confirmó en pantalla. Al
      * volver al formulario, el carrito se reconstruye con los precios actuales.
      *
-     * Los mensajes van en la clave "price_changes" para que la vista los muestre
-     * en un modal dedicado (y no en la alerta general de errores).
-     *
      * @param  array<int, array{presentation: ProductPresentation, quantity: int, shown_price: float|null}>  $details
-     *
-     * @throws ValidationException
+     * @return list<string>
      */
-    protected function ensurePricesUnchanged(array $details): void
+    protected function priceChanges(array $details): array
     {
         $changes = [];
 
@@ -686,11 +725,7 @@ class SaleController extends Controller
                 continue;
             }
 
-            $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
-            $label = trim(
-                ($presentation->product?->name ?? '—').' — '.($presentation->unit?->name ?? '')
-                .' (x'.$presentation->conversion_factor.($baseUnitSymbol ? ' '.$baseUnitSymbol : '').')'
-            );
+            $label = $this->presentationLabel($presentation);
 
             $changes[] = $shownPrice === null
                 ? sprintf('"%s": precio vigente Bs. %s.', $label, number_format($currentPrice, 1, '.', ''))
@@ -702,8 +737,20 @@ class SaleController extends Controller
                 );
         }
 
-        if ($changes !== []) {
-            throw ValidationException::withMessages(['price_changes' => $changes]);
-        }
+        return $changes;
+    }
+
+    /**
+     * Etiqueta legible de una presentación: "Producto — Unidad (x{factor} {símbolo base})",
+     * la misma convención que el carrito de sale.create.
+     */
+    protected function presentationLabel(ProductPresentation $presentation): string
+    {
+        $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
+
+        return trim(
+            ($presentation->product?->name ?? '—').' — '.($presentation->unit?->name ?? '')
+            .' (x'.$presentation->conversion_factor.($baseUnitSymbol ? ' '.$baseUnitSymbol : '').')'
+        );
     }
 }

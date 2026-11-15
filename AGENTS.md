@@ -433,12 +433,12 @@ opcionales vacíos a `null`.
 
 ### 7.5 Seeders (`database/seeders/`)
 
-- `DatabaseSeeder` encadena: `Unit → Product → ProductPresentation → Sale →
-  SaleDetail`, y crea/actualiza el único usuario de prueba (`test@example.com`, encargado).
-- **Idempotentes**: `updateOrCreate` con clave natural (`symbol`, `name`, `barcode`,
-  `customer_name`) y `firstOrCreate` para usuarios.
+- **Solo existe `DatabaseSeeder`**, y únicamente crea/actualiza el usuario de prueba
+  `test@example.com` (encargado). No hay datos de ejemplo: en una instalación nueva las
+  demás tablas (unidades, productos, presentaciones, ventas, compras, notas) quedan
+  vacías y se cargan desde el sistema.
+- **Idempotente**: `firstOrCreate` por correo + `update` que fuerza rol y `active`.
 - **Nunca** `factory()->create()` en `DatabaseSeeder`.
-- **Faltan** seeders de `Purchase`, `PurchaseDetail`, `SaleNote` y `SaleNoteDetail`.
 
 ### 7.6 Rutas (`routes/web.php`)
 
@@ -509,8 +509,8 @@ ellos. Valor inválido = error de base de datos.
 
 ### 8.3 Sin factories (salvo `User`)
 
-Los modelos de negocio no usan `HasFactory` y no existen factories. Por eso los
-seeders usan `updateOrCreate`. Si se necesita volumen aleatorio, crear factories
+Los modelos de negocio no usan `HasFactory` y no existen factories (tampoco hay
+seeders de datos de ejemplo). Si se necesita volumen aleatorio, crear factories
 primero.
 
 ### 8.4 SQL específico de PostgreSQL
@@ -566,7 +566,6 @@ primero.
   (redundante, inofensivo).
 - La lógica de importes/estado de venta está duplicada entre `SaleController` y
   `SaleNoteService`.
-- No hay seeders de compras ni de notas de venta.
 - `User` no tiene relaciones inversas (`sales()`, `purchases()`, `saleNotes()`).
 - `database/database.sqlite` existe en el repo, pero el entorno local usa PostgreSQL.
 - No existe `routes/api.php` (Laravel 12 no lo crea por defecto).
@@ -597,9 +596,8 @@ php artisan tinker --execute="..."
 
 Credencial de prueba (tras `db:seed`), contraseña `password`:
 
-- `test@example.com` → encargado (único usuario que crea el seeder; las ventas de
-  ejemplo de `SaleSeeder` se le asignan al crearse). Los empleados se crean desde el
-  CRUD de usuarios, con su horario de acceso.
+- `test@example.com` → encargado (único dato que crea el seeder). Los empleados se
+  crean desde el CRUD de usuarios, con su horario de acceso.
 
 ---
 

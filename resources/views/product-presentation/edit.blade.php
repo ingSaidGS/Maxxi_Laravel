@@ -161,12 +161,12 @@
                 @enderror
             </div>
 
-            <div>
+            <div id="desired-profit-wrapper">
                 <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">
                     Ganancia deseada <span class="font-semibold text-red-600" aria-hidden="true">*</span>
                 </label>
                 <input type="number" id="desired_profit" name="desired_profit"
-                       value="{{ old('desired_profit', $presentation->desired_profit) }}" step="0.1" min="0" required placeholder="Ej.: 5.50"
+                       value="{{ old('desired_profit', $presentation->desired_profit) }}" step="0.1" min="0" @required(old('sale_enable', $presentation->sale_enable)) placeholder="Ej.: 5.50"
                        @error('desired_profit') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('desired_profit') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('desired_profit')
@@ -205,6 +205,7 @@
         const saleInput = document.getElementById('sale_price');
         const conversionInput = document.getElementById('conversion_factor');
         const profitInput = document.getElementById('desired_profit');
+        const profitWrapper = document.getElementById('desired-profit-wrapper');
 
         // Costo del producto por unidad mínima, tomado de la presentación de compra
         // que ya exista para este producto (null si no hay ninguna).
@@ -235,6 +236,12 @@
 
             // Sin presentación de compra activa no se puede fijar el precio de venta.
             const salePriceLocked = costPerBaseUnit === null;
+
+            // La ganancia deseada solo aplica a presentaciones de venta; sin venta
+            // no se envía y el servidor guarda 0.
+            profitWrapper.hidden = !saleEnabled;
+            profitInput.disabled = !saleEnabled;
+            profitInput.required = saleEnabled;
 
             saleWrapper.hidden = !saleEnabled;
             saleInput.disabled = !saleEnabled || salePriceLocked;

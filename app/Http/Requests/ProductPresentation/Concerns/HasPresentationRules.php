@@ -19,9 +19,21 @@ trait HasPresentationRules
             'purchase_enable' => ['boolean'],
             'sale_enable' => ['boolean'],
             'reference_purchase_cost' => ['required_if:purchase_enable,1', 'nullable', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
-            'desired_profit' => ['required', 'numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
+            'desired_profit' => ['required_if:sale_enable,1', 'nullable', 'numeric', 'min:0', 'decimal:0,1', 'max:999999999.9'],
             'barcode' => ['nullable', 'string', 'max:20'],
             'active' => ['boolean'],
+        ];
+    }
+
+    /**
+     * Mensajes personalizados de validación.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'desired_profit.required_if' => 'La ganancia deseada es obligatoria cuando la venta está habilitada.',
         ];
     }
 
@@ -41,6 +53,12 @@ trait HasPresentationRules
         $validated['sale_price'] = $this->boolean('sale_enable') && $this->filled('sale_price')
             ? ($validated['sale_price'] ?? null)
             : null;
+
+        // La ganancia solo aplica a presentaciones de venta; la columna no admite
+        // null, así que una presentación solo de compra siempre guarda 0.
+        $validated['desired_profit'] = $this->boolean('sale_enable')
+            ? $validated['desired_profit']
+            : 0;
 
         return $validated;
     }

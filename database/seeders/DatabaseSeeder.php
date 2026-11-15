@@ -13,6 +13,10 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * Solo se crea el usuario encargado de prueba: el resto de las tablas
+     * (unidades, productos, presentaciones, ventas, compras y notas) quedan
+     * vacías y se cargan desde el sistema.
      */
     public function run(): void
     {
@@ -22,18 +26,9 @@ class DatabaseSeeder extends Seeder
         );
 
         // Idempotente: si ya existía, se fuerzan el rol y el acceso esperados.
-        // Es el único usuario de prueba que crea el seeder.
         User::where('email', 'test@example.com')->update([
             'tipo' => UserType::Encargado->value,
             'active' => true,
-        ]);
-
-        $this->call([
-            UnitSeeder::class,
-            ProductSeeder::class,
-            ProductPresentationSeeder::class,
-            SaleSeeder::class,
-            SaleDetailSeeder::class,
         ]);
     }
 }

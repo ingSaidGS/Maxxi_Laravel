@@ -110,6 +110,7 @@ Route::middleware('auth')->group(function () {
     // en notas pendientes).
     Route::middleware('can:manage-sale-notes')->group(function () {
         Route::post('sale-notes/{sale_note}/entregar', [SaleNoteController::class, 'entregar'])->name('sale-notes.entregar');
+        Route::patch('sale-notes/{sale_note}/prices', [SaleNoteController::class, 'refreshPrices'])->name('sale-notes.prices.update');
         Route::post('sale-notes/{sale_note}/details', [SaleNoteController::class, 'storeDetail'])->name('sale-notes.details.store');
         Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/deactivate', [SaleNoteController::class, 'deactivateDetail'])->name('sale-notes.details.deactivate');
         Route::patch('sale-notes/{sale_note}/details/{sale_note_detail}/restore', [SaleNoteController::class, 'restoreDetail'])->name('sale-notes.details.restore');

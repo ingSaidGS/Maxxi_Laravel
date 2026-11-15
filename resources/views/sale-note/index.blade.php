@@ -206,6 +206,7 @@
                             <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Fecha</th>
                             <th class="bg-maxxi-navy whitespace-nowrap px-4 py-3 font-semibold text-white">Entrega</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Total</th>
+                            <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Ganancia</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Estado</th>
                             <th class="bg-maxxi-navy px-4 py-3 font-semibold text-white">Usuario</th>
                             <th class="bg-maxxi-navy px-4 py-3 text-right font-semibold text-white">Acciones</th>
@@ -225,6 +226,17 @@
                                 <td class="whitespace-nowrap px-4 py-3 tabular-nums text-gray-600">{{ $saleNote->noted_at?->format('d/m/Y H:i') }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 tabular-nums text-gray-600">{{ $saleNote->scheduled_for?->format('d/m/Y H:i') ?? '—' }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-semibold tabular-nums text-maxxi-orange-dark">Bs. {{ $saleNote->total }}</td>
+                                <td class="whitespace-nowrap px-4 py-3">
+                                    @php($profit = $noteProfits[$saleNote->id] ?? null)
+                                    @if ($profit === null)
+                                        <span class="text-gray-400">—</span>
+                                    @else
+                                        <span class="font-semibold tabular-nums {{ $profit['profit'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">Bs. {{ number_format($profit['profit'], 1) }}</span>
+                                        @if ($profit['estimated'])
+                                            <span class="block text-xs text-gray-400">estimada</span>
+                                        @endif
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $meta['class'] }}">{{ $meta['label'] }}</span>
                                 </td>
@@ -267,9 +279,18 @@
                             <span class="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $meta['class'] }}">{{ $meta['label'] }}</span>
                         </div>
 
-                        <div class="mt-3 rounded-lg bg-maxxi-orange/10 px-3 py-2">
-                            <p class="mb-0 text-[11px] font-semibold uppercase tracking-wide text-maxxi-orange-dark">Total</p>
-                            <p class="mb-0 mt-0.5 text-sm font-bold tabular-nums text-gray-800">Bs. {{ $saleNote->total }}</p>
+                        @php($profit = $noteProfits[$saleNote->id] ?? null)
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <div class="rounded-lg bg-maxxi-orange/10 px-3 py-2">
+                                <p class="mb-0 text-[11px] font-semibold uppercase tracking-wide text-maxxi-orange-dark">Total</p>
+                                <p class="mb-0 mt-0.5 text-sm font-bold tabular-nums text-gray-800">Bs. {{ $saleNote->total }}</p>
+                            </div>
+                            <div class="rounded-lg px-3 py-2 {{ $profit !== null && $profit['profit'] < 0 ? 'bg-red-50' : 'bg-emerald-50/60' }}">
+                                <p class="mb-0 text-[11px] font-semibold uppercase tracking-wide {{ $profit !== null && $profit['profit'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">
+                                    Ganancia{{ $profit !== null && $profit['estimated'] ? ' (estimada)' : '' }}
+                                </p>
+                                <p class="mb-0 mt-0.5 text-sm font-bold tabular-nums text-gray-800">{{ $profit !== null ? 'Bs. '.number_format($profit['profit'], 1) : '—' }}</p>
+                            </div>
                         </div>
 
                         <div data-href-ignore class="mt-4 flex flex-wrap gap-2">

@@ -294,6 +294,126 @@
         </div>
     @endif
 
+    {{-- Aviso: precios del catálogo que cambiaron desde que se tomó el pedido.
+         Solo en notas pendientes y para el encargado (puede modificarlas). --}}
+    @can('manage-sale-notes')
+        @if ($priceChanges['lines'] !== [])
+            @php
+                $priceLineLabel = function ($detail): string {
+                    $presentation = $detail->presentation;
+                    $baseUnitSymbol = $presentation?->product?->baseUnit?->symbol;
+
+                    return trim(
+                        ($presentation?->product?->name ?? '—').' — '.($presentation?->unit?->name ?? '')
+                        .' (x'.$detail->conversion_factor.($baseUnitSymbol ? ' '.$baseUnitSymbol : '').')'
+                    );
+                };
+            @endphp
+
+            <div id="price-changes-alert" role="alert" class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600" aria-hidden="true">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <h2 class="mb-1 text-base font-semibold text-amber-900">Cambiaron precios desde que se tomó el pedido</h2>
+                        <p class="mb-3 text-sm text-amber-800">La nota conserva los precios del pedido. ¿Quieres actualizarlos a los precios actuales del catálogo?</p>
+
+                        <div class="overflow-x-auto rounded-lg border border-amber-200 bg-white">
+                            <table class="mb-0 w-full border-collapse text-sm">
+                                <thead>
+                                    <tr class="text-left text-xs uppercase tracking-wide text-gray-500">
+                                        <th class="bg-amber-50 px-3 py-2 font-semibold">Producto</th>
+                                        <th class="bg-amber-50 whitespace-nowrap px-3 py-2 text-right font-semibold">En la nota</th>
+                                        <th class="bg-amber-50 whitespace-nowrap px-3 py-2 text-right font-semibold">Actual</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($priceChanges['lines'] as $line)
+                                        <tr class="border-t border-amber-100">
+                                            <td class="px-3 py-2 text-gray-800">{{ $priceLineLabel($line['detail']) }}</td>
+                                            <td class="whitespace-nowrap px-3 py-2 text-right tabular-nums text-gray-500">Bs. {{ number_format((float) $line['detail']->unit_price, 1) }}</td>
+                                            <td class="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums text-gray-800">Bs. {{ number_format($line['current_price'], 1) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="mb-0 mt-3 text-sm text-amber-900">
+                            Total de la nota: <span class="tabular-nums">Bs. {{ number_format((float) $saleNote->total, 1) }}</span>
+                            → <span class="font-semibold tabular-nums">Bs. {{ number_format($priceChanges['new_total'], 1) }}</span> si se actualiza.
+                        </p>
+
+                        <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button type="button" id="keep-prices" class="{{ $botones['secundario'] }} w-full sm:w-auto">Mantener precios del pedido</button>
+                            <button type="button" id="open-refresh-prices" class="{{ $botones['primario'] }} w-full sm:w-auto">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                Actualizar precios
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Modal: confirmar la actualización de precios --}}
+            <x-modal name="confirm-refresh-prices" max-width="md" focusable>
+                <form method="POST" action="{{ route('sale-notes.prices.update', $saleNote) }}" class="p-6">
+                    @csrf
+                    @method('PATCH')
+
+                    {{-- Precios mostrados: el servidor rechaza la actualización si
+                         volvieron a cambiar (no se usan como precio de la nota). --}}
+                    @foreach ($priceChanges['lines'] as $line)
+                        <input type="hidden" name="prices[{{ $line['detail']->id }}]" value="{{ $line['current_price'] }}">
+                    @endforeach
+
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-orange/10 text-maxxi-orange-dark" aria-hidden="true">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                        </span>
+                        <div>
+                            <h2 class="mb-1 text-lg font-semibold text-gray-800">¿Actualizar los precios de la nota?</h2>
+                            <p class="mb-0 text-sm text-gray-600">
+                                {{ count($priceChanges['lines']) === 1 ? 'Se actualizará 1 producto' : 'Se actualizarán '.count($priceChanges['lines']).' productos' }}
+                                al precio actual y el total pasará de Bs. {{ number_format((float) $saleNote->total, 1) }} a
+                                <span class="font-semibold">Bs. {{ number_format($priceChanges['new_total'], 1) }}</span>. La nota seguirá pendiente.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'confirm-refresh-prices')">Cancelar</button>
+                        <x-boton-envio pending="Actualizando…" class="{{ $botones['primario'] }}">Sí, actualizar</x-boton-envio>
+                    </div>
+                </form>
+            </x-modal>
+
+            <script>
+                (function () {
+                    var alertBox = document.getElementById('price-changes-alert');
+
+                    document.getElementById('open-refresh-prices')?.addEventListener('click', function () {
+                        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'confirm-refresh-prices' }));
+                    });
+
+                    // "Mantener": oculta el aviso; la nota conserva sus precios y el
+                    // aviso vuelve a mostrarse la próxima vez que se abra la nota.
+                    document.getElementById('keep-prices')?.addEventListener('click', function () {
+                        if (alertBox) { alertBox.hidden = true; }
+                    });
+                })();
+            </script>
+        @endif
+    @endcan
+
     {{-- Ficha de detalle --}}
     <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <dl class="mb-0 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -610,6 +730,38 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
                             </svg>
                             <span>La nota no tiene líneas activas para entregar. Reactiva al menos un producto.</span>
+                        </div>
+                    @endif
+
+                    {{-- Recordatorio: precios del catálogo que cambiaron desde el
+                         pedido. Entregar respeta los precios de la nota; para
+                         usar los actuales hay que actualizarlos antes. --}}
+                    @if ($priceChanges['lines'] !== [])
+                        @php($changedCount = count($priceChanges['lines']))
+                        <div role="alert" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            <div class="flex items-start gap-3">
+                                <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 003.1 21h17.8a1.5 1.5 0 001.3-2.44l-8.48-14.7a1.5 1.5 0 00-2.6 0z" />
+                                </svg>
+                                <div class="min-w-0">
+                                    <p class="mb-1 font-semibold">
+                                        {{ $changedCount === 1 ? 'Cambió el precio de 1 producto' : "Cambiaron los precios de {$changedCount} productos" }} desde que se tomó el pedido.
+                                    </p>
+                                    <p class="mb-0">
+                                        Si entregas ahora, la venta se registrará con los precios de la nota
+                                        (total <span class="tabular-nums">Bs. {{ number_format((float) $saleNote->total, 1) }}</span>).
+                                        Con los precios actuales sería <span class="font-semibold tabular-nums">Bs. {{ number_format($priceChanges['new_total'], 1) }}</span>.
+                                    </p>
+                                    <button type="button"
+                                            x-on:click="$dispatch('close-modal', 'deliver-sale-note'); $dispatch('open-modal', 'confirm-refresh-prices')"
+                                            class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-1">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                        </svg>
+                                        Actualizar precios primero
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     @endif
 

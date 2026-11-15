@@ -63,7 +63,7 @@ class SaleNoteService
      */
     public function updateHeader(SaleNote $saleNote, array $data): SaleNote
     {
-        $saleNote->update([
+        $saleNote->fill([
             'customer_name' => $data['customer_name'],
             'customer_phone' => $data['customer_phone'],
             'noted_at' => $data['noted_at'],
@@ -71,8 +71,12 @@ class SaleNoteService
             'delivery_latitude' => $data['delivery_latitude'] ?? null,
             'delivery_longitude' => $data['delivery_longitude'] ?? null,
             'sale_discount' => $data['sale_discount'],
-            'total' => $this->totalFromActiveDetails($saleNote),
         ]);
+
+        // El total se calcula DESPUÉS de asignar el descuento nuevo: si se
+        // calculara antes, usaría el descuento anterior y quedaría desfasado.
+        $saleNote->total = $this->totalFromActiveDetails($saleNote);
+        $saleNote->save();
 
         return $saleNote;
     }
@@ -295,6 +299,133 @@ class SaleNoteService
 
             return $sale;
         });
+    }
+
+    /**
+     * Líneas activas de una nota pendiente cuyo precio guardado ya no coincide
+     * con el precio de venta vigente del catálogo.
+     *
+     * El precio de una nota se congela al tomar el pedido; esto permite avisar al
+     * encargado de que el catálogo cambió y ofrecerle actualizarlo. Solo se
+     * consideran presentaciones que se pueden vender hoy (producto y
+     * presentación activos, venta habilitada y precio definido): las demás no
+     * tienen un precio vigente al cual actualizar.
+     *
+     * "new_total" es el total que tendría la nota con los precios vigentes
+     * (respetando su descuento).
+     *
+     * @return array{lines: list<array{detail: SaleNoteDetail, current_price: float, new_subtotal: float}>, new_total: float}
+     */
+    public function priceChanges(SaleNote $saleNote): array
+    {
+        if ($saleNote->status !== 'pendiente') {
+            return ['lines' => [], 'new_total' => (float) $saleNote->total];
+        }
+
+        $details = $saleNote->saleNoteDetails()
+            ->where('active', true)
+            ->with(['presentation.product.baseUnit', 'presentation.unit'])
+            ->get();
+
+        $lines = [];
+        $subtotals = 0.0;
+
+        foreach ($details as $detail) {
+            $currentPrice = $this->currentSalePrice($detail);
+
+            if ($currentPrice !== null && abs($currentPrice - round((float) $detail->unit_price, 1)) >= 0.001) {
+                $newSubtotal = round((int) $detail->quantity * $currentPrice, 1);
+                $lines[] = ['detail' => $detail, 'current_price' => $currentPrice, 'new_subtotal' => $newSubtotal];
+                $subtotals += $newSubtotal;
+
+                continue;
+            }
+
+            $subtotals += (float) $detail->subtotal;
+        }
+
+        return [
+            'lines' => $lines,
+            'new_total' => round(max(0, $subtotals - (float) $saleNote->sale_discount), 1),
+        ];
+    }
+
+    /**
+     * Actualiza al precio vigente las líneas cuyo precio cambió y recalcula el
+     * total de la nota.
+     *
+     * Bloqueo optimista: "$shownPrices" son los precios que el encargado vio en
+     * el aviso ([id de línea => precio]). Si al confirmar los cambios no son
+     * exactamente esos (el catálogo volvió a cambiar), no se aplica nada y se
+     * pide revisar de nuevo. Además del precio y el subtotal, se actualiza el
+     * costo de referencia de la línea al costo actual del producto, para que la
+     * nota no muestre un costo viejo junto a un precio nuevo.
+     *
+     * @param  array<int, float>  $shownPrices
+     * @return int cantidad de líneas actualizadas
+     *
+     * @throws ValidationException
+     */
+    public function refreshPrices(SaleNote $saleNote, array $shownPrices): int
+    {
+        return DB::transaction(function () use ($saleNote, $shownPrices) {
+            $saleNote = SaleNote::query()
+                ->whereKey($saleNote->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->ensurePending($saleNote);
+
+            $lines = $this->priceChanges($saleNote)['lines'];
+
+            $current = collect($lines)->mapWithKeys(
+                fn (array $line) => [$line['detail']->id => $line['current_price']]
+            );
+            $shown = collect($shownPrices)->map(fn ($price) => round((float) $price, 1));
+
+            $matches = $current->count() === $shown->count()
+                && $current->every(fn (float $price, int $id) => $shown->has($id) && abs($shown[$id] - $price) < 0.001);
+
+            if ($lines === [] || ! $matches) {
+                throw ValidationException::withMessages([
+                    'prices' => $lines === []
+                        ? 'Los precios de la nota ya están actualizados.'
+                        : 'Los precios volvieron a cambiar mientras revisabas. Revisa el aviso y vuelve a confirmar.',
+                ]);
+            }
+
+            foreach ($lines as $line) {
+                $line['detail']->update([
+                    'unit_price' => $line['current_price'],
+                    'subtotal' => $line['new_subtotal'],
+                    'base_unit_cost_at_note' => round((float) ($line['detail']->presentation->product->base_unit_cost ?? 0), 2),
+                ]);
+            }
+
+            $this->refreshTotal($saleNote);
+
+            return count($lines);
+        });
+    }
+
+    /**
+     * Precio de venta vigente de la presentación de una línea, o null si hoy no
+     * se puede vender (producto o presentación de baja, venta deshabilitada o
+     * sin precio definido).
+     */
+    protected function currentSalePrice(SaleNoteDetail $detail): ?float
+    {
+        $presentation = $detail->presentation;
+
+        if ($presentation === null
+            || ! $presentation->active
+            || ! $presentation->sale_enable
+            || $presentation->sale_price === null
+            || ! $presentation->product?->active) {
+            return null;
+        }
+
+        return round((float) $presentation->sale_price, 1);
     }
 
     /**

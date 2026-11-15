@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductPresentation;
 use App\Models\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -142,6 +143,7 @@ class ProductController extends Controller
 
         if ($affected === 0) {
             $currentStock = (int) Product::query()->whereKey($product->id)->value('stock');
+            $currentLabel = $this->stockLabel($currentStock, $purchasePresentation, $product);
 
             // Sin withInput(): el formulario debe volver a mostrar el stock real
             // actual, no los valores enviados, para que el encargado revise sobre
@@ -149,7 +151,7 @@ class ProductController extends Controller
             return redirect()
                 ->route('products.show', $product)
                 ->withErrors([
-                    'stock' => "El stock cambió mientras editabas (ahora es {$currentStock}). Revisa y vuelve a guardar.",
+                    'stock' => "El stock cambió mientras editabas (ahora hay {$currentLabel}). Revisa y vuelve a guardar.",
                 ]);
         }
 
@@ -202,5 +204,46 @@ class ProductController extends Controller
         }
 
         $request->merge(['name' => Str::ucfirst(Str::lower(trim($name)))]);
+    }
+
+    /**
+     * Stock legible: paquetes de la presentación de compra + unidades sueltas
+     * ("2 Cajas y 3 Unidades"), con el mismo formato que la ficha del producto
+     * (product/show.blade.php). Si la presentación de compra es de 1 unidad base,
+     * solo se muestran unidades sueltas.
+     */
+    private function stockLabel(int $stock, ProductPresentation $purchasePresentation, Product $product): string
+    {
+        $stock = max(0, $stock);
+        $factor = (int) $purchasePresentation->conversion_factor;
+        $packageUnit = $purchasePresentation->loadMissing('unit')->unit?->name;
+        $baseUnit = $product->loadMissing('baseUnit')->baseUnit?->name;
+
+        // Pluralización simple en español: vocal final -> +s, consonante -> +es.
+        $pluralize = fn (string $name, int $count): string => $count === 1
+            ? $name
+            : (preg_match('/[aeiou]$/i', $name) ? $name.'s' : $name.'es');
+
+        if ($baseUnit === null) {
+            return (string) $stock;
+        }
+
+        if ($factor <= 1 || $packageUnit === null) {
+            return $stock.' '.$pluralize($baseUnit, $stock);
+        }
+
+        $packages = intdiv($stock, $factor);
+        $loose = $stock % $factor;
+        $parts = [];
+
+        if ($packages > 0) {
+            $parts[] = $packages.' '.$pluralize($packageUnit, $packages);
+        }
+
+        if ($loose > 0) {
+            $parts[] = $loose.' '.$pluralize($baseUnit, $loose);
+        }
+
+        return $parts !== [] ? implode(' y ', $parts) : '0 '.$pluralize($baseUnit, 0);
     }
 }

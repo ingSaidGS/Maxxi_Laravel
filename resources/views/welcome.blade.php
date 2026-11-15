@@ -36,6 +36,16 @@
         <div class="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-maxxi-orange/10 blur-3xl" aria-hidden="true"></div>
 
         <div class="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            {{-- Aviso de sesión expirada (error 419, ver bootstrap/app.php) --}}
+            @if (session('session_expired'))
+                <div role="alert" class="mx-auto mb-8 flex max-w-3xl items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm">
+                    <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{{ session('session_expired') }}</span>
+                </div>
+            @endif
+
             <div class="grid items-center gap-12 lg:grid-cols-2">
                 {{-- Texto --}}
                 <div class="text-center lg:text-left">

@@ -215,6 +215,13 @@ Además, `LoginRequest::authenticate()` valida `active => true` y el horario **a
 de dejar la sesión iniciada. `bootstrap/app.php` también configura
 `trustProxies(at: '*')`.
 
+**Error 419 (token CSRF vencido):** `bootstrap/app.php` (`withExceptions`) captura el
+`HttpException` 419 (Laravel convierte `TokenMismatchException` en él antes de los
+callbacks) y redirige a `/` (welcome) con el flash `session_expired`, que la vista
+muestra como aviso. Las peticiones JSON reciben `{"message": …}` con 419. Lo escrito en
+el formulario se pierde (decisión: la sesión dura `SESSION_LIFETIME` = 120 min sin
+actividad).
+
 ### 4.6 Horario de acceso
 
 - **Obligatorio para empleados** al crear o editar (`required_if:tipo,empleado` en

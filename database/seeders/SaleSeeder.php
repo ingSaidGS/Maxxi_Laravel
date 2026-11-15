@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserType;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -14,9 +15,11 @@ class SaleSeeder extends Seeder
      */
     public function run(): void
     {
+        // Las ventas de ejemplo se registran a nombre del único usuario de prueba
+        // (lo crea DatabaseSeeder; se crea aquí si este seeder se ejecuta solo).
         $cashier = User::firstOrCreate(
-            ['email' => 'cajero@example.com'],
-            ['name' => 'Cajero', 'password' => 'password', 'active' => true, 'email_verified_at' => now()],
+            ['email' => 'test@example.com'],
+            ['name' => 'Test User', 'password' => 'password', 'tipo' => UserType::Encargado, 'active' => true, 'email_verified_at' => now()],
         );
 
         $sales = [
@@ -56,10 +59,16 @@ class SaleSeeder extends Seeder
         ];
 
         foreach ($sales as $sale) {
-            Sale::updateOrCreate(
-                ['customer_name' => $sale['customer_name']],
-                $sale + ['user_id' => $cashier->id],
-            );
+            $record = Sale::firstOrNew(['customer_name' => $sale['customer_name']]);
+            $record->fill($sale);
+
+            // El cajero solo se asigna al crear la venta: al volver a sembrar no
+            // se reasignan ventas que ya existían a nombre de otro usuario.
+            if (! $record->exists) {
+                $record->user_id = $cashier->id;
+            }
+
+            $record->save();
         }
     }
 }

@@ -231,8 +231,8 @@ actividad).
   ingresar**: el login lo rechaza y el middleware cierra su sesión, con el mensaje de
   `User::accessDeniedMessage()`. Solo puede ocurrir con empleados creados antes de que
   el horario fuera obligatorio; se corrige asignándole horario.
-- `UserFactory` asigna por defecto 00:00–23:59 y el seeder da ese horario a
-  `cajero@example.com` al crearlo, para que no queden bloqueados.
+- `UserFactory` asigna por defecto 00:00–23:59 para que los usuarios de los tests no
+  queden bloqueados.
 - Deben venir ambos; la salida debe ser **estrictamente posterior** a la entrada (no se
   permiten rangos que crucen medianoche).
 - El fin del rango es **exclusivo** (07:00–19:00 permite hasta 18:59:59).
@@ -434,7 +434,7 @@ opcionales vacíos a `null`.
 ### 7.5 Seeders (`database/seeders/`)
 
 - `DatabaseSeeder` encadena: `Unit → Product → ProductPresentation → Sale →
-  SaleDetail`, y crea/actualiza los usuarios de prueba.
+  SaleDetail`, y crea/actualiza el único usuario de prueba (`test@example.com`, encargado).
 - **Idempotentes**: `updateOrCreate` con clave natural (`symbol`, `name`, `barcode`,
   `customer_name`) y `firstOrCreate` para usuarios.
 - **Nunca** `factory()->create()` en `DatabaseSeeder`.
@@ -595,10 +595,11 @@ php artisan route:list --path=sales -v
 php artisan tinker --execute="..."
 ```
 
-Credenciales de prueba (tras `db:seed`), contraseña `password`:
+Credencial de prueba (tras `db:seed`), contraseña `password`:
 
-- `test@example.com` → encargado
-- `cajero@example.com` → empleado
+- `test@example.com` → encargado (único usuario que crea el seeder; las ventas de
+  ejemplo de `SaleSeeder` se le asignan al crearse). Los empleados se crean desde el
+  CRUD de usuarios, con su horario de acceso.
 
 ---
 

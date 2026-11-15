@@ -22,21 +22,9 @@ class DatabaseSeeder extends Seeder
         );
 
         // Idempotente: si ya existía, se fuerzan el rol y el acceso esperados.
+        // Es el único usuario de prueba que crea el seeder.
         User::where('email', 'test@example.com')->update([
             'tipo' => UserType::Encargado->value,
-            'active' => true,
-        ]);
-
-        User::firstOrCreate(
-            ['email' => 'cajero@example.com'],
-            // Los empleados necesitan horario para ingresar; solo se asigna al
-            // crearlo, para no pisar el horario de un cajero ya existente.
-            ['name' => 'Cajero Maxxi', 'password' => 'password', 'tipo' => UserType::Empleado, 'active' => true, 'email_verified_at' => now(),
-                'access_start_time' => '00:00', 'access_end_time' => '23:59'],
-        );
-
-        User::where('email', 'cajero@example.com')->update([
-            'tipo' => UserType::Empleado->value,
             'active' => true,
         ]);
 

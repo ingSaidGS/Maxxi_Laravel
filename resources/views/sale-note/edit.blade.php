@@ -183,9 +183,25 @@
                     @endforeach
                 </div>
 
-                <div class="mt-4 flex items-center justify-between gap-3 rounded-lg border border-maxxi-orange/30 bg-maxxi-orange/5 px-4 py-3">
-                    <span class="text-sm font-semibold uppercase tracking-wide text-maxxi-orange-dark">Total</span>
-                    <span class="text-lg font-bold tabular-nums text-maxxi-orange-dark">Bs. {{ $saleNote->total }}</span>
+                {{-- Resumen en vivo: misma fórmula que el servidor
+                     (SaleNoteService::totalFromActiveDetails): subtotales de las
+                     líneas ACTIVAS - descuento, con piso de cero. --}}
+                @php($activeSubtotal = (float) $saleNote->saleNoteDetails->where('active', true)->sum('subtotal'))
+                <div id="note-total-preview" data-subtotal="{{ $activeSubtotal }}" data-saved-total="{{ (float) $saleNote->total }}"
+                     class="mt-4 rounded-lg border border-maxxi-orange/30 bg-maxxi-orange/5 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3 text-sm text-gray-600">
+                        <span>Subtotal (líneas activas)</span>
+                        <span class="tabular-nums">Bs. {{ number_format($activeSubtotal, 1) }}</span>
+                    </div>
+                    <div class="mt-1 flex items-center justify-between gap-3 text-sm text-gray-600">
+                        <span>Descuento</span>
+                        <span class="tabular-nums" data-preview-discount>− Bs. 0.0</span>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between gap-3 border-t border-maxxi-orange/20 pt-2">
+                        <span class="text-sm font-semibold uppercase tracking-wide text-maxxi-orange-dark">Total</span>
+                        <span class="text-lg font-bold tabular-nums text-maxxi-orange-dark" data-preview-total>Bs. {{ number_format((float) $saleNote->total, 1) }}</span>
+                    </div>
+                    <p data-preview-note class="mb-0 mt-1 hidden text-right text-xs text-gray-500" aria-live="polite"></p>
                 </div>
             @endif
 
@@ -237,6 +253,41 @@
             var bypassConfirm = false;
 
             if (!form) { return; }
+
+            // Vista previa del total mientras se escribe el descuento.
+            var preview = document.getElementById('note-total-preview');
+            var discountInput = document.getElementById('sale_discount');
+
+            function money(value) {
+                return 'Bs. ' + (Math.round(value * 10) / 10).toFixed(1);
+            }
+
+            function parseMoney(raw) {
+                var value = parseFloat(String(raw ?? '').trim().replace(',', '.'));
+                return isNaN(value) ? 0 : value;
+            }
+
+            function updateTotalPreview() {
+                if (!preview || !discountInput) { return; }
+
+                var subtotal = parseFloat(preview.dataset.subtotal) || 0;
+                var savedTotal = parseFloat(preview.dataset.savedTotal) || 0;
+                var discount = Math.max(0, parseMoney(discountInput.value));
+                var total = Math.round(Math.max(0, subtotal - discount) * 10) / 10;
+                var note = preview.querySelector('[data-preview-note]');
+
+                preview.querySelector('[data-preview-discount]').textContent = '− ' + money(discount);
+                preview.querySelector('[data-preview-total]').textContent = money(total);
+
+                if (note) {
+                    var changed = Math.abs(total - savedTotal) >= 0.05;
+                    note.textContent = changed ? 'Total guardado: ' + money(savedTotal) + ' · se actualizará al guardar.' : '';
+                    note.classList.toggle('hidden', !changed);
+                }
+            }
+
+            discountInput?.addEventListener('input', updateTotalPreview);
+            updateTotalPreview();
 
             form.addEventListener('submit', function (event) {
                 if (bypassConfirm) { return; }

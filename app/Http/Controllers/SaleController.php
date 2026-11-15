@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductPresentation;
 use App\Models\Sale;
+use App\Services\ProfitService;
 use App\Services\StockService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -217,35 +218,15 @@ class SaleController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Sale $sale): View
+    public function show(Sale $sale, ProfitService $profits): View
     {
         $sale->load(['user', 'saleDetails.presentation.product.baseUnit', 'saleDetails.presentation.product.presentations', 'saleDetails.presentation.unit']);
 
-        // Costo de lo vendido y ganancia bruta, con el mismo criterio que
-        // ReportService::economic(): ganancia = total (ya con descuento) - costo.
-        // El costo por unidad base de cada línea usa, en orden: el guardado al
-        // vender, el costo actual de la presentación y el costo base del producto.
-        $costEstimated = false;
-
-        $saleCost = (float) $sale->saleDetails->sum(function ($detail) use (&$costEstimated): float {
-            $presentation = $detail->presentation;
-            $unitCost = (float) $detail->base_unit_cost_at_sale;
-
-            if ($unitCost <= 0) {
-                $factor = (int) ($presentation?->conversion_factor ?? 0);
-                $referenceCost = (float) ($presentation?->reference_purchase_cost ?? 0);
-
-                $unitCost = $factor > 0 && $referenceCost > 0
-                    ? $referenceCost / $factor
-                    : (float) ($presentation?->product?->base_unit_cost ?? 0);
-
-                $costEstimated = $costEstimated || $unitCost > 0;
-            }
-
-            return $unitCost * (int) $detail->base_quantity;
-        });
-
-        $grossProfit = round((float) $sale->total - $saleCost, 1);
+        // Costo de lo vendido y ganancia bruta (mismo criterio que los reportes).
+        $profit = $profits->forSale($sale);
+        $saleCost = $profit['cost'];
+        $grossProfit = $profit['profit'];
+        $costEstimated = $profit['estimated'];
 
         return view('sale.show', compact('sale', 'saleCost', 'grossProfit', 'costEstimated'));
     }

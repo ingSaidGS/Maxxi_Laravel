@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaleNote\DeliverSaleNoteRequest;
+use App\Http\Requests\SaleNote\RefreshSaleNotePricesRequest;
 use App\Http\Requests\SaleNote\StoreSaleNoteDetailRequest;
 use App\Http\Requests\SaleNote\StoreSaleNoteRequest;
 use App\Http\Requests\SaleNote\UpdateSaleNoteDetailQuantityRequest;
@@ -10,6 +11,7 @@ use App\Http\Requests\SaleNote\UpdateSaleNoteRequest;
 use App\Models\ProductPresentation;
 use App\Models\SaleNote;
 use App\Models\SaleNoteDetail;
+use App\Services\ProfitService;
 use App\Services\SaleNoteService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -35,7 +37,7 @@ class SaleNoteController extends Controller
      * para poder encontrar notas anteriores aunque hoy no haya. El rango de
      * fechas acota siempre el resultado cuando viene indicado.
      */
-    public function index(Request $request): View
+    public function index(Request $request, ProfitService $profits): View
     {
         $perPage = (int) $request->input('per_page', 15);
 
@@ -61,8 +63,14 @@ class SaleNoteController extends Controller
             )
             ->first();
 
+        // Las líneas (de la nota y de su venta) se cargan solo para la página
+        // actual, para calcular la ganancia bruta sin consultas por fila.
         $saleNotes = $this->filteredSaleNotes($filters)
-            ->with(['user', 'sale'])
+            ->with([
+                'user',
+                'sale.saleDetails.presentation.product',
+                'saleNoteDetails.presentation.product',
+            ])
             ->orderByDesc('noted_at')
             ->paginate($perPage)
             ->withQueryString();
@@ -73,7 +81,11 @@ class SaleNoteController extends Controller
             'pending' => (int) ($summary->pending_count ?? 0),
         ];
 
-        return view('sale-note.index', compact('saleNotes', 'filters', 'summary'));
+        // Ganancia bruta por nota (null en anuladas); ver ProfitService::forSaleNote().
+        $noteProfits = $saleNotes->getCollection()
+            ->mapWithKeys(fn ($saleNote) => [$saleNote->id => $profits->forSaleNote($saleNote)]);
+
+        return view('sale-note.index', compact('saleNotes', 'filters', 'summary', 'noteProfits'));
     }
 
     /**
@@ -123,7 +135,11 @@ class SaleNoteController extends Controller
 
         $presentations = $this->saleablePresentations();
 
-        return view('sale-note.show', compact('saleNote', 'presentations'));
+        // Precios del catálogo que cambiaron desde que se tomó el pedido (solo
+        // en notas pendientes); la vista ofrece actualizarlos.
+        $priceChanges = $this->saleNotes->priceChanges($saleNote);
+
+        return view('sale-note.show', compact('saleNote', 'presentations', 'priceChanges'));
     }
 
     /**
@@ -183,6 +199,21 @@ class SaleNoteController extends Controller
         return redirect()
             ->route('sales.show', $sale)
             ->with('status', "Nota #{$saleNote->id} entregada. Venta #{$sale->id} registrada.");
+    }
+
+    /**
+     * Actualiza al precio vigente del catálogo las líneas de una nota pendiente
+     * cuyo precio cambió desde que se tomó el pedido, y recalcula el total.
+     */
+    public function refreshPrices(RefreshSaleNotePricesRequest $request, SaleNote $saleNote): RedirectResponse
+    {
+        $updated = $this->saleNotes->refreshPrices($saleNote, $request->dataForPersistence());
+
+        return redirect()
+            ->route('sale-notes.show', $saleNote)
+            ->with('status', $updated === 1
+                ? 'Se actualizó el precio de 1 producto. El total de la nota se recalculó.'
+                : "Se actualizaron los precios de {$updated} productos. El total de la nota se recalculó.");
     }
 
     /**

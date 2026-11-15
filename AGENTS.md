@@ -284,6 +284,14 @@ Aplica a perfil, restablecimiento y CRUD de usuarios.
   stock, captura pago (`received_cash`/`received_qr`), deriva estado/deuda con la misma
   lógica que la venta directa y marca la nota `entregada` con `delivered_at` y `sale_id`.
 - `destroy` = **anular** (estado `anulada`), no borrar.
+- **Precios congelados y actualización:** el `unit_price` de cada línea se congela al
+  agregarla y se respeta al editar cantidades y al entregar. En una nota **pendiente**,
+  `SaleNoteService::priceChanges()` detecta las líneas activas cuyo precio difiere del
+  vigente (solo presentaciones vendibles hoy) y `sale-note/show` lo avisa al encargado.
+  `PATCH sale-notes/{sale_note}/prices` (`refreshPrices()`) actualiza esas líneas al
+  precio vigente (y `base_unit_cost_at_note` al costo actual) y recalcula el total. Es
+  un bloqueo optimista: recibe los precios mostrados y no aplica nada si volvieron a
+  cambiar.
 
 ### 5.3 Compras y costos (`PurchaseService`, `ProductPresentationService`)
 
@@ -353,6 +361,7 @@ Aplica a perfil, restablecimiento y CRUD de usuarios.
 | `SaleNoteService` | alta/edición/anulación/entrega de notas, totales y pagos |
 | `SalePreparationService` | hoja de preparación y picking |
 | `ReportService` | resúmenes económicos, por día, por usuario, top productos y stock bajo |
+| `ProfitService` | costo y ganancia bruta de una venta (`forSale`) y de una nota (`forSaleNote`): total − Σ(cantidad base × costo), con respaldo de costo (línea → presentación → producto) y marca `estimated`. Lo usan `sales.show` y `sale-notes.index`; en notas: pendiente = estimada con el costo actual, entregada = la de su venta, anulada = null |
 
 La lógica de la **venta directa** sigue en `SaleController` (no en un servicio). Al
 tocar reglas de ventas, revisar que no se dupliquen/desincronicen con `SaleNoteService`
@@ -404,7 +413,8 @@ Existen y se usan para:
   `HasPresentationRules` con `dataForPersistence()`).
 - `Purchase/Store|UpdatePurchaseRequest` (+ trait `HasPurchaseRules`).
 - `SaleNote/Store|Update|DeliverSaleNoteRequest`, `StoreSaleNoteDetailRequest`,
-  `UpdateSaleNoteDetailQuantityRequest` (+ trait `HasSaleNoteRules`).
+  `UpdateSaleNoteDetailQuantityRequest`, `RefreshSaleNotePricesRequest` (+ trait
+  `HasSaleNoteRules`).
 - `ProfileUpdateRequest` y `Auth/LoginRequest`.
 
 Siguen con validación inline: `UnitController`, `ProductController`,
@@ -443,7 +453,7 @@ opcionales vacíos a `null`.
   binding (`{sale}`) cuando comparten prefijo.
 - `sales` y `purchases` no tienen `restore`. `sales.destroy` responde 405.
 - `purchases.destroy` existe pero su método está vacío (ver §10).
-- Total actual: **90 rutas**.
+- Total actual: **91 rutas**.
 
 ### 7.7 Vistas (`resources/views/`)
 
@@ -571,7 +581,7 @@ vendor/bin/pint                    # formato
 php artisan test                   # pruebas Pest (SQLite en memoria)
 
 # Rutas
-php artisan route:list             # inventario real de rutas (90)
+php artisan route:list             # inventario real de rutas (91)
 php artisan route:list --path=sales -v
 
 # Pruebas manuales de lógica (tinker, con rollback para no dejar datos)

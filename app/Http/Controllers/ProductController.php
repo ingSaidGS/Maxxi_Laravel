@@ -49,7 +49,7 @@ class ProductController extends Controller
         $this->normalizeName($request);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:20'],
+            'name' => ['required', 'string', 'max:30'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'single_batch' => ['boolean'],
             'active' => ['boolean'],
@@ -90,7 +90,7 @@ class ProductController extends Controller
         $this->normalizeName($request);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:20'],
+            'name' => ['required', 'string', 'max:30'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'single_batch' => ['boolean'],
             'active' => ['boolean'],

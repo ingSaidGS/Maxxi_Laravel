@@ -105,7 +105,7 @@ Todas las tablas de negocio tienen `timestamps()` y `down()` con `Schema::dropIf
 
 - **units:** `id`, `name` varchar(10), `symbol` varchar(3), `active` bool (default true),
   timestamps.
-- **products:** `id`, `name` varchar(20), `base_unit_id` FK→units, `stock` int
+- **products:** `id`, `name` varchar(30), `base_unit_id` FK→units, `stock` int
   (default 0), `base_unit_cost` decimal(10,2) (default 0), `single_batch` bool
   (default false), `active` bool (default true), timestamps. CHECK: `stock >= 0`,
   `base_unit_cost >= 0`.

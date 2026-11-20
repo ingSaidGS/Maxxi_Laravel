@@ -56,7 +56,7 @@
                 <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
                     Nombre <span class="font-semibold text-red-600" aria-hidden="true">*</span>
                 </label>
-                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="20" required autofocus autocomplete="off" placeholder="Ej.: Arroz"
+                <input type="text" id="name" name="name" value="{{ old('name') }}" maxlength="30" required autofocus autocomplete="off" placeholder="Ej.: Arroz"
                        @error('name') aria-invalid="true" @enderror
                        class="block w-full rounded-lg shadow-sm focus:ring-2 @error('name') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
                 @error('name')

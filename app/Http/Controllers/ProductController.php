@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductPresentation;
 use App\Models\Unit;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,6 +15,14 @@ class ProductController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * El listado se filtra en el servidor (sobre todos los productos, no solo
+     * la página actual) por:
+     * - "search": compara sin distinguir mayúsculas ("ilike" de PostgreSQL)
+     *   contra el nombre del producto y el nombre/símbolo de su unidad base.
+     * - "estado": "active" (por defecto) o "inactive".
+     *
+     * Los contadores de activos/inactivos respetan la búsqueda.
      */
     public function index(Request $request): View
     {
@@ -23,12 +32,52 @@ class ProductController extends Controller
             $perPage = 15;
         }
 
-        $products = Product::with(['baseUnit', 'presentations.unit'])
+        $search = $request->query('search');
+        $search = is_string($search) ? trim($search) : '';
+
+        $estado = $request->query('estado') === 'inactive' ? 'inactive' : 'active';
+
+        $activeCount = $this->searchedProducts($search)->where('active', true)->count();
+        $inactiveCount = $this->searchedProducts($search)->where('active', false)->count();
+
+        // Distingue "no hay productos registrados" de "ninguno coincide con los filtros".
+        $hasProducts = Product::query()->exists();
+
+        $products = $this->searchedProducts($search)
+            ->where('active', $estado === 'active')
+            ->with(['baseUnit', 'presentations.unit'])
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('product.index', compact('products'));
+        return view('product.index', compact(
+            'products',
+            'search',
+            'estado',
+            'activeCount',
+            'inactiveCount',
+            'hasProducts',
+        ));
+    }
+
+    /**
+     * Consulta base de productos filtrada por el término de búsqueda.
+     *
+     * Usa "ilike" (PostgreSQL) para ignorar mayúsculas/minúsculas.
+     */
+    private function searchedProducts(string $search): Builder
+    {
+        return Product::query()->when($search !== '', function (Builder $query) use ($search) {
+            $like = '%'.$search.'%';
+
+            $query->where(function (Builder $query) use ($like) {
+                $query->where('name', 'ilike', $like)
+                    ->orWhereHas('baseUnit', function (Builder $unit) use ($like) {
+                        $unit->where('name', 'ilike', $like)
+                            ->orWhere('symbol', 'ilike', $like);
+                    });
+            });
+        });
     }
 
     /**

@@ -106,8 +106,8 @@
         </div>
     @endif
 
-    @if ($products->isEmpty())
-        {{-- Estado vacío --}}
+    @if (! $hasProducts)
+        {{-- Estado vacío (no hay ningún producto registrado) --}}
         <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
@@ -124,7 +124,18 @@
             @endcan
         </div>
     @else
-        {{-- Filtros: búsqueda libre + estado --}}
+        @php
+            // Píldora de estado: enlaces que conservan búsqueda y tamaño de página.
+            $estadoUrl = fn (string $value): string => route('products.index', array_merge(
+                request()->except(['page', 'estado']),
+                ['estado' => $value],
+            ));
+            $pillBase = 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30';
+            $pillOn = 'bg-white text-maxxi-navy shadow-sm';
+            $pillOff = 'bg-transparent text-gray-500 hover:bg-white/70 hover:text-gray-700';
+        @endphp
+
+        {{-- Filtros: búsqueda + estado (se aplican en el servidor sobre todos los productos) --}}
         <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
             <div class="mb-4 flex items-center gap-2">
                 <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-maxxi-navy/10 text-maxxi-navy" aria-hidden="true">
@@ -135,45 +146,73 @@
                 <h2 class="mb-0 text-sm font-semibold text-maxxi-navy">Filtros</h2>
             </div>
 
-            {{-- Buscador (filtra en cliente) --}}
-            <div class="mb-4">
+            {{-- Buscador (busca en el servidor al presionar "Buscar" o Enter) --}}
+            <form method="GET" action="{{ route('products.index') }}" class="mb-4" role="search">
+                <input type="hidden" name="estado" value="{{ $estado }}">
+                @if (request()->filled('per_page'))
+                    <input type="hidden" name="per_page" value="{{ request('per_page') }}">
+                @endif
+
                 <label for="product-filter-search" class="mb-1 block text-sm font-medium text-gray-700">Buscar</label>
-                <div class="relative">
-                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400" aria-hidden="true">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <div class="relative flex-1">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400" aria-hidden="true">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                            </svg>
+                        </span>
+                        <input type="search" id="product-filter-search" name="search" value="{{ $search }}" autocomplete="off"
+                               placeholder="Buscar por nombre o unidad…"
+                               class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                    </div>
+                    <button type="submit" class="{{ $botones['primario'] }} w-full sm:w-auto">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
-                    </span>
-                    <input type="search" id="product-filter-search" autocomplete="off"
-                           placeholder="Buscar por nombre, unidad o estado…"
-                           class="block w-full rounded-lg border-gray-300 pl-9 shadow-sm focus:border-maxxi-orange focus:ring-maxxi-orange" />
+                        Buscar
+                    </button>
                 </div>
-            </div>
+            </form>
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 {{-- Filtro por estado (píldora segmentada) --}}
                 <div class="inline-flex items-center self-start rounded-full border border-gray-200 bg-gray-100 p-1" role="group" aria-label="Filtrar productos por estado">
-                    <button type="button" data-product-filter="active" aria-pressed="true"
-                            class="inline-flex items-center gap-1.5 rounded-full bg-transparent px-3.5 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-white/70 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 aria-pressed:bg-white aria-pressed:text-maxxi-navy aria-pressed:shadow-sm">
+                    <a href="{{ $estadoUrl('active') }}" @if ($estado === 'active') aria-current="page" @endif
+                       class="{{ $pillBase }} {{ $estado === 'active' ? $pillOn : $pillOff }}">
                         Activos
-                        <span class="rounded-full bg-green-100 px-1.5 text-xs font-semibold text-green-700">{{ $products->where('active', true)->count() }}</span>
-                    </button>
-                    <button type="button" data-product-filter="inactive" aria-pressed="false"
-                            class="inline-flex items-center gap-1.5 rounded-full bg-transparent px-3.5 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-white/70 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30 aria-pressed:bg-white aria-pressed:text-maxxi-navy aria-pressed:shadow-sm">
+                        <span class="rounded-full bg-green-100 px-1.5 text-xs font-semibold text-green-700">{{ $activeCount }}</span>
+                    </a>
+                    <a href="{{ $estadoUrl('inactive') }}" @if ($estado === 'inactive') aria-current="page" @endif
+                       class="{{ $pillBase }} {{ $estado === 'inactive' ? $pillOn : $pillOff }}">
                         Inactivos
-                        <span class="rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-600">{{ $products->where('active', false)->count() }}</span>
-                    </button>
+                        <span class="rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-600">{{ $inactiveCount }}</span>
+                    </a>
                 </div>
 
-                <button type="button" data-product-clear class="{{ $botones['secundario'] }} self-start sm:self-auto">
+                <a href="{{ route('products.index', request()->only('per_page')) }}" class="{{ $botones['secundario'] }} self-start sm:self-auto">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Limpiar
-                </button>
+                </a>
             </div>
         </div>
 
+        @if ($products->isEmpty())
+            {{-- Sin resultados para los filtros --}}
+            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+                <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <p class="mb-0 mt-3 text-sm text-gray-500">
+                    @if ($search !== '')
+                        No hay productos {{ $estado === 'active' ? 'activos' : 'inactivos' }} que coincidan con «{{ $search }}».
+                    @else
+                        No hay productos {{ $estado === 'active' ? 'activos' : 'inactivos' }}.
+                    @endif
+                </p>
+            </div>
+        @else
         <div id="product-list">
             {{-- Tabla (escritorio) --}}
             <div class="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
@@ -190,11 +229,9 @@
                     <tbody>
                         @foreach ($products as $product)
                             <tr data-href="{{ route('products.show', $product) }}"
-                                data-product-item data-active="{{ $product->active ? '1' : '0' }}"
                                 @php
                                     $stockLabel = $getStockLabel($product);
                                 @endphp
-                                data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo') . ' ' . $stockLabel) }}"
                                 class="cursor-pointer border-t border-gray-100 transition hover:bg-maxxi-cream/60">
                                 <td class="px-4 py-3 font-medium text-gray-800">{{ $product->name }}</td>
                                 <td class="px-4 py-3 text-gray-600">
@@ -248,11 +285,9 @@
             <div class="space-y-3 md:hidden">
                 @foreach ($products as $product)
                     <div data-href="{{ route('products.show', $product) }}"
-                         data-product-item data-active="{{ $product->active ? '1' : '0' }}"
                          @php
                              $stockLabel = $getStockLabel($product);
                          @endphp
-                         data-search="{{ trim(($product->name ?? '') . ' ' . ($product->baseUnit?->name ?? '') . ' ' . ($product->baseUnit?->symbol ?? '') . ' ' . ($product->active ? 'activo' : 'inactivo') . ' ' . $stockLabel) }}"
                          class="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-maxxi-orange/40 hover:shadow">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -331,13 +366,7 @@
             </div>
         @endif
 
-        {{-- Sin resultados para el filtro --}}
-        <div id="product-filter-empty" class="hidden rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
-            <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <p class="mb-0 mt-3 text-sm text-gray-500">No hay productos que coincidan con los filtros.</p>
-        </div>
+        @endif
     @endif
 
     {{-- Modales: confirmar baja y reactivación --}}
@@ -392,67 +421,6 @@
             </div>
         </div>
     </x-modal>
-
-    <script>
-        const productFilterButtons = document.querySelectorAll('[data-product-filter]');
-        const productItems = document.querySelectorAll('[data-product-item]');
-        const productList = document.getElementById('product-list');
-        const productFilterEmpty = document.getElementById('product-filter-empty');
-        const productSearchInput = document.getElementById('product-filter-search');
-        const productClearButton = document.querySelector('[data-product-clear]');
-
-        // Estado seleccionado en la píldora; por defecto, activos.
-        let productActiveFilter = 'active';
-
-        const applyProductFilter = () => {
-            const query = (productSearchInput?.value || '').trim().toLowerCase();
-            let visible = 0;
-
-            productItems.forEach((item) => {
-                const isActive = item.dataset.active === '1';
-                const matchesState = productActiveFilter === 'active' ? isActive : !isActive;
-
-                let matchesSearch = true;
-                if (query && !(item.dataset.search || '').toLowerCase().includes(query)) {
-                    matchesSearch = false;
-                }
-
-                // Un ítem se muestra solo si cumple el estado Y la búsqueda.
-                const show = matchesState && matchesSearch;
-                item.classList.toggle('hidden', !show);
-                if (show) {
-                    visible++;
-                }
-            });
-
-            // Oculta la lista completa (tabla + tarjetas) si el filtro no arroja resultados.
-            productList?.classList.toggle('hidden', visible === 0);
-            productFilterEmpty?.classList.toggle('hidden', visible > 0);
-
-            productFilterButtons.forEach((button) => {
-                button.setAttribute('aria-pressed', button.dataset.productFilter === productActiveFilter ? 'true' : 'false');
-            });
-        };
-
-        productFilterButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-                productActiveFilter = button.dataset.productFilter;
-                applyProductFilter();
-            });
-        });
-
-        productSearchInput?.addEventListener('input', applyProductFilter);
-
-        productClearButton?.addEventListener('click', () => {
-            if (productSearchInput) {
-                productSearchInput.value = '';
-            }
-            productActiveFilter = 'active';
-            applyProductFilter();
-        });
-
-        applyProductFilter();
-    </script>
 
     {{-- Confirmación de baja/reactivación --}}
     <script>

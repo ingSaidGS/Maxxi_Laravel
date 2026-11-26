@@ -209,10 +209,51 @@
 
         // Costo del producto por unidad mínima, tomado de la presentación de compra
         // que ya exista para este producto (null si no hay ninguna).
-        const costPerBaseUnit = {{ $purchaseCostPerBaseUnit !== null ? json_encode($purchaseCostPerBaseUnit) : 'null' }};
+        const storedCostPerBaseUnit = {{ $purchaseCostPerBaseUnit !== null ? json_encode($purchaseCostPerBaseUnit) : 'null' }};
+
+        // Si esta presentación es la de compra, el costo por unidad mínima se toma en
+        // vivo del costo de referencia que se está escribiendo (null si aún no es válido).
+        const currentCostPerBaseUnit = () => {
+            if (!purchaseToggle.checked) {
+                return storedCostPerBaseUnit;
+            }
+
+            const referenceCost = parseFloat(costInput.value);
+            const conversion = parseInt(conversionInput.value, 10);
+
+            if (!Number.isFinite(referenceCost) || !(conversion > 0)) {
+                return null;
+            }
+
+            return referenceCost / conversion;
+        };
+
+        // Mismo redondeo que ProductPresentationService::roundSalePrice() al guardar
+        // la presentación de compra: decimal < 0.3 -> N; 0.3–0.6 -> N.5; > 0.6 -> N+1.
+        const roundSalePrice = (value) => {
+            const integer = Math.floor(value);
+            const hundredths = Math.round((value - integer) * 100);
+
+            if (hundredths < 30) {
+                return integer;
+            }
+
+            return hundredths <= 60 ? integer + 0.5 : integer + 1;
+        };
 
         const calculateSalePrice = () => {
-            if (costPerBaseUnit === null || !saleToggle.checked) {
+            if (!saleToggle.checked) {
+                return;
+            }
+
+            const costPerBaseUnit = currentCostPerBaseUnit();
+
+            if (costPerBaseUnit === null) {
+                // Costo de compra vacío o inválido mientras se edita: sin vista previa.
+                if (purchaseToggle.checked) {
+                    saleInput.value = '';
+                }
+
                 return;
             }
 
@@ -220,7 +261,13 @@
             const profit = parseFloat(profitInput.value) || 0;
             const salePrice = costPerBaseUnit * conversion + profit;
 
-            saleInput.value = (Math.round(salePrice * 10) / 10).toFixed(1);
+            // Con compra habilitada el servidor recalcula con el redondeo especial;
+            // sin ella se guarda el valor enviado, redondeado a 1 decimal.
+            const rounded = purchaseToggle.checked
+                ? roundSalePrice(salePrice)
+                : Math.round(salePrice * 10) / 10;
+
+            saleInput.value = rounded.toFixed(1);
         };
 
         const syncFields = () => {
@@ -235,7 +282,8 @@
             }
 
             // Sin presentación de compra activa no se puede fijar el precio de venta.
-            const salePriceLocked = costPerBaseUnit === null;
+            // Si esta misma es la de compra, el costo sale del campo de referencia.
+            const salePriceLocked = !purchaseEnabled && storedCostPerBaseUnit === null;
 
             // La ganancia deseada solo aplica a presentaciones de venta; sin venta
             // no se envía y el servidor guarda 0.
@@ -251,11 +299,15 @@
             }
         };
 
-        purchaseToggle.addEventListener('change', syncFields);
+        purchaseToggle.addEventListener('change', () => {
+            syncFields();
+            calculateSalePrice();
+        });
         saleToggle.addEventListener('change', () => {
             syncFields();
             calculateSalePrice();
         });
+        costInput.addEventListener('input', calculateSalePrice);
         conversionInput.addEventListener('input', calculateSalePrice);
         profitInput.addEventListener('input', calculateSalePrice);
 

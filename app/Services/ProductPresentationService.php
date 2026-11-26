@@ -220,15 +220,17 @@ class ProductPresentationService
      * Redondeo especial para los precios de venta recalculados automáticamente.
      *
      * A partir de la parte decimal del valor:
-     *  - menor a 0.3  -> se redondea hacia abajo (N).
-     *  - de 0.3 a 0.6 -> se redondea a N.5.
-     *  - mayor a 0.6  -> se redondea hacia arriba (N+1).
+     *  - menor a 0.1            -> se redondea hacia abajo (N).
+     *  - de 0.1 a menos de 0.7  -> se redondea a N.5.
+     *  - 0.7 o más              -> se redondea hacia arriba (N+1).
      *
-     * Ej.: 9.1 -> 9 ; 9.45 -> 9.5 ; 9.8 -> 10.
+     * Ej.: 9.05 -> 9 ; 9.1 -> 9.5 ; 9.69 -> 9.5 ; 9.7 -> 10.
      *
-     * Solo se aplica en el recálculo automático de sale_price (al agregar o
-     * cambiar el reference_purchase_cost de la presentación de compra). La
-     * edición manual del precio de venta no usa este redondeo.
+     * En el servidor se aplica en el recálculo automático de sale_price (al
+     * agregar o cambiar el reference_purchase_cost de la presentación de compra).
+     * Los formularios de presentación usan el mismo redondeo en la vista previa
+     * del precio de venta; si el usuario escribe otro precio a mano en una
+     * presentación que no es la de compra, se guarda tal cual.
      */
     private function roundSalePrice(float $value): float
     {
@@ -236,11 +238,11 @@ class ProductPresentationService
         // Se compara en centésimas para evitar errores de punto flotante en los límites.
         $hundredths = (int) round(($value - $integer) * 100);
 
-        if ($hundredths < 30) {
+        if ($hundredths < 10) {
             return (float) $integer;
         }
 
-        if ($hundredths <= 60) {
+        if ($hundredths < 70) {
             return $integer + 0.5;
         }
 

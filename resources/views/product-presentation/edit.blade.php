@@ -247,17 +247,17 @@
             return referenceCost / conversion;
         };
 
-        // Mismo redondeo que ProductPresentationService::roundSalePrice() al guardar
-        // la presentación de compra: decimal < 0.3 -> N; 0.3–0.6 -> N.5; > 0.6 -> N+1.
+        // Mismo redondeo que ProductPresentationService::roundSalePrice(); se aplica a
+        // toda vista previa del precio de venta: decimal < 0.1 -> N; 0.1 a < 0.7 -> N.5; >= 0.7 -> N+1.
         const roundSalePrice = (value) => {
             const integer = Math.floor(value);
             const hundredths = Math.round((value - integer) * 100);
 
-            if (hundredths < 30) {
+            if (hundredths < 10) {
                 return integer;
             }
 
-            return hundredths <= 60 ? integer + 0.5 : integer + 1;
+            return hundredths < 70 ? integer + 0.5 : integer + 1;
         };
 
         const calculateSalePrice = () => {
@@ -280,13 +280,9 @@
             const profit = parseFloat(profitInput.value) || 0;
             const salePrice = costPerBaseUnit * conversion + profit;
 
-            // Con compra habilitada el servidor recalcula con el redondeo especial;
-            // sin ella se guarda el valor enviado, redondeado a 1 decimal.
-            const rounded = purchaseToggle.checked
-                ? roundSalePrice(salePrice)
-                : Math.round(salePrice * 10) / 10;
-
-            saleInput.value = rounded.toFixed(1);
+            // Siempre con el redondeo especial: con compra habilitada el servidor
+            // recalcula igual; sin ella se guarda este valor tal como se envía.
+            saleInput.value = roundSalePrice(salePrice).toFixed(1);
         };
 
         const syncFields = () => {

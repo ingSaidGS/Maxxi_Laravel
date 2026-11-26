@@ -161,6 +161,17 @@
                 @enderror
             </div>
 
+            {{-- Costo de la presentación: costo por unidad mínima × factor de conversión --}}
+            <div id="presentation-cost-wrapper" class="sm:col-span-2" hidden>
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-maxxi-navy/15 bg-maxxi-navy/5 px-4 py-3">
+                    <div>
+                        <p class="mb-0 text-xs font-medium uppercase tracking-wide text-gray-400">Costo de esta presentación</p>
+                        <p id="presentation-cost-detail" class="mb-0 mt-0.5 text-xs text-gray-500"></p>
+                    </div>
+                    <p id="presentation-cost" class="mb-0 whitespace-nowrap text-lg font-semibold text-gray-800"></p>
+                </div>
+            </div>
+
             <div id="desired-profit-wrapper">
                 <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">
                     Ganancia deseada <span class="font-semibold text-red-600" aria-hidden="true">*</span>
@@ -211,16 +222,63 @@
         // que ya exista para este producto (null si no hay ninguna).
         const costPerBaseUnit = {{ $purchaseCostPerBaseUnit !== null ? json_encode($purchaseCostPerBaseUnit) : 'null' }};
 
+        // Si esta presentación será la de compra, el costo por unidad mínima se toma
+        // del costo de referencia que se está escribiendo (null si aún no es válido).
+        const currentCostPerBaseUnit = () => {
+            if (!purchaseToggle.checked) {
+                return costPerBaseUnit;
+            }
+
+            const referenceCost = parseFloat(costInput.value);
+            const conversion = parseInt(conversionInput.value, 10);
+
+            if (!Number.isFinite(referenceCost) || !(conversion > 0)) {
+                return null;
+            }
+
+            return referenceCost / conversion;
+        };
+
+        // Mismo redondeo que ProductPresentationService::roundSalePrice() al guardar
+        // la presentación de compra: decimal < 0.3 -> N; 0.3–0.6 -> N.5; > 0.6 -> N+1.
+        const roundSalePrice = (value) => {
+            const integer = Math.floor(value);
+            const hundredths = Math.round((value - integer) * 100);
+
+            if (hundredths < 30) {
+                return integer;
+            }
+
+            return hundredths <= 60 ? integer + 0.5 : integer + 1;
+        };
+
         const calculateSalePrice = () => {
-            if (costPerBaseUnit === null || !saleToggle.checked) {
+            if (!saleToggle.checked) {
+                return;
+            }
+
+            const unitCost = currentCostPerBaseUnit();
+
+            if (unitCost === null) {
+                // Costo de compra vacío o inválido mientras se escribe: sin vista previa.
+                if (purchaseToggle.checked) {
+                    saleInput.value = '';
+                }
+
                 return;
             }
 
             const conversion = parseFloat(conversionInput.value) || 0;
             const profit = parseFloat(profitInput.value) || 0;
-            const salePrice = costPerBaseUnit * conversion + profit;
+            const salePrice = unitCost * conversion + profit;
 
-            saleInput.value = (Math.round(salePrice * 10) / 10).toFixed(1);
+            // Con compra habilitada el servidor recalcula con el redondeo especial;
+            // sin ella se guarda el valor enviado, redondeado a 1 decimal.
+            const rounded = purchaseToggle.checked
+                ? roundSalePrice(salePrice)
+                : Math.round(salePrice * 10) / 10;
+
+            saleInput.value = rounded.toFixed(1);
         };
 
         const syncFields = () => {
@@ -235,7 +293,8 @@
             }
 
             // Sin presentación de compra activa no se puede fijar el precio de venta.
-            const salePriceLocked = costPerBaseUnit === null;
+            // Si esta misma será la de compra, el costo sale del campo de referencia.
+            const salePriceLocked = !purchaseEnabled && costPerBaseUnit === null;
 
             // La ganancia deseada solo aplica a presentaciones de venta; sin venta
             // no se envía y el servidor guarda 0.
@@ -251,11 +310,15 @@
             }
         };
 
-        purchaseToggle.addEventListener('change', syncFields);
+        purchaseToggle.addEventListener('change', () => {
+            syncFields();
+            calculateSalePrice();
+        });
         saleToggle.addEventListener('change', () => {
             syncFields();
             calculateSalePrice();
         });
+        costInput.addEventListener('input', calculateSalePrice);
         conversionInput.addEventListener('input', calculateSalePrice);
         profitInput.addEventListener('input', calculateSalePrice);
 
@@ -265,6 +328,30 @@
         if (saleInput.value.trim() === '') {
             calculateSalePrice();
         }
+
+        // Muestra cuánto cuesta esta presentación (costo por unidad mínima × factor).
+        const presentationCostWrapper = document.getElementById('presentation-cost-wrapper');
+        const presentationCost = document.getElementById('presentation-cost');
+        const presentationCostDetail = document.getElementById('presentation-cost-detail');
+
+        const updatePresentationCost = () => {
+            const unitCost = currentCostPerBaseUnit();
+            const conversion = parseInt(conversionInput.value, 10);
+
+            if (unitCost === null || !(conversion > 0)) {
+                presentationCostWrapper.hidden = true;
+                return;
+            }
+
+            presentationCost.textContent = 'Bs. ' + (unitCost * conversion).toFixed(2);
+            presentationCostDetail.textContent = 'Bs. ' + unitCost.toFixed(2) + ' por unidad mínima × ' + conversion;
+            presentationCostWrapper.hidden = false;
+        };
+
+        // Se escucha en el formulario para que corra después de los demás listeners.
+        document.getElementById('presentation-form').addEventListener('input', updatePresentationCost);
+        document.getElementById('presentation-form').addEventListener('change', updatePresentationCost);
+        updatePresentationCost();
     </script>
 
     {{-- Modal: confirmar la creación de la presentación --}}

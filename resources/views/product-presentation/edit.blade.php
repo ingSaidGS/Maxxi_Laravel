@@ -161,6 +161,17 @@
                 @enderror
             </div>
 
+            {{-- Costo de la presentación: costo por unidad mínima × factor de conversión --}}
+            <div id="presentation-cost-wrapper" class="sm:col-span-2" hidden>
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-maxxi-navy/15 bg-maxxi-navy/5 px-4 py-3">
+                    <div>
+                        <p class="mb-0 text-xs font-medium uppercase tracking-wide text-gray-400">Costo de esta presentación</p>
+                        <p id="presentation-cost-detail" class="mb-0 mt-0.5 text-xs text-gray-500"></p>
+                    </div>
+                    <p id="presentation-cost" class="mb-0 whitespace-nowrap text-lg font-semibold text-gray-800"></p>
+                </div>
+            </div>
+
             <div id="desired-profit-wrapper">
                 <label for="desired_profit" class="mb-1 block text-sm font-medium text-gray-700">
                     Ganancia deseada <span class="font-semibold text-red-600" aria-hidden="true">*</span>
@@ -317,6 +328,30 @@
         if (saleInput.value.trim() === '') {
             calculateSalePrice();
         }
+
+        // Muestra cuánto cuesta esta presentación (costo por unidad mínima × factor).
+        const presentationCostWrapper = document.getElementById('presentation-cost-wrapper');
+        const presentationCost = document.getElementById('presentation-cost');
+        const presentationCostDetail = document.getElementById('presentation-cost-detail');
+
+        const updatePresentationCost = () => {
+            const unitCost = currentCostPerBaseUnit();
+            const conversion = parseInt(conversionInput.value, 10);
+
+            if (unitCost === null || !(conversion > 0)) {
+                presentationCostWrapper.hidden = true;
+                return;
+            }
+
+            presentationCost.textContent = 'Bs. ' + (unitCost * conversion).toFixed(2);
+            presentationCostDetail.textContent = 'Bs. ' + unitCost.toFixed(2) + ' por unidad mínima × ' + conversion;
+            presentationCostWrapper.hidden = false;
+        };
+
+        // Se escucha en el formulario para que corra después de los demás listeners.
+        document.getElementById('presentation-form').addEventListener('input', updatePresentationCost);
+        document.getElementById('presentation-form').addEventListener('change', updatePresentationCost);
+        updatePresentationCost();
     </script>
 
     {{-- Modal: confirmar la actualización de la presentación --}}

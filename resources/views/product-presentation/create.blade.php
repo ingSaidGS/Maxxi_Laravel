@@ -187,9 +187,17 @@
 
             <div>
                 <label for="barcode" class="mb-1 block text-sm font-medium text-gray-700">Código de barras <span class="font-normal text-gray-400">(opcional)</span></label>
-                <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" maxlength="20" autocomplete="off" placeholder="Ej.: 7501234567890"
-                       @error('barcode') aria-invalid="true" @enderror
-                       class="block w-full rounded-lg shadow-sm focus:ring-2 @error('barcode') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                <div class="flex items-stretch gap-2">
+                    <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" maxlength="20" autocomplete="off" placeholder="Ej.: 7501234567890"
+                           @error('barcode') aria-invalid="true" @enderror
+                           class="block w-full min-w-0 flex-1 rounded-lg shadow-sm focus:ring-2 @error('barcode') border-red-300 focus:border-red-400 focus:ring-red-200 @else border-gray-300 focus:border-maxxi-orange focus:ring-maxxi-orange/40 @enderror" />
+                    <button type="button" id="barcode-scan-open" aria-label="Escanear código de barras" title="Escanear código de barras"
+                            class="inline-flex w-10 shrink-0 items-center justify-center rounded-lg border border-maxxi-navy/20 bg-maxxi-navy/5 text-maxxi-navy transition hover:bg-maxxi-navy hover:text-white focus:outline-none focus:ring-2 focus:ring-maxxi-navy/30">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5v9M6.75 7.5v9M9.75 7.5v2.25M9.75 14.25v2.25M12.75 7.5v2.25M12.75 14.25v2.25M15.75 7.5v9M18.75 7.5v2.25M18.75 14.25v2.25M21 9v6" />
+                        </svg>
+                    </button>
+                </div>
                 @error('barcode')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
@@ -447,4 +455,106 @@
             });
         })();
     </script>
+
+    {{-- Modal: escanear el código de barras con la cámara (reutiliza MaxxiBarcodeScanner) --}}
+    <x-modal name="barcode-scanner" max-width="md">
+        <div class="p-5 sm:p-6"
+             x-init="$watch('show', value => {
+                if (value) { setTimeout(() => window.startBarcodeScanner && window.startBarcodeScanner(), 150); }
+                else { window.stopBarcodeScanner && window.stopBarcodeScanner(); }
+             })">
+            <div class="flex items-start gap-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-maxxi-navy/5 text-maxxi-navy">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5v9M6.75 7.5v9M9.75 7.5v2.25M9.75 14.25v2.25M12.75 7.5v2.25M12.75 14.25v2.25M15.75 7.5v9M18.75 7.5v2.25M18.75 14.25v2.25M21 9v6" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="mb-1 text-lg font-semibold text-gray-800">Escanear código de barras</h2>
+                    <p class="mb-0 text-sm text-gray-600">Apunta la cámara al código del empaque. Al leerlo se colocará en el campo <span class="font-medium">Código de barras</span>.</p>
+                </div>
+            </div>
+
+            <div id="barcode-reader" class="mt-4 aspect-video w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-900"></div>
+            <p id="barcode-status" class="mt-2 mb-0 text-sm text-gray-500">Iniciando la cámara…</p>
+
+            <div class="mt-6 flex justify-end">
+                <button type="button" class="{{ $botones['secundario'] }}" x-on:click="$dispatch('close-modal', 'barcode-scanner')">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
+    {{-- Escáner de código de barras (cámara); el campo admite también escritura manual o lector USB --}}
+    <script>
+        (function () {
+            var barcodeInput = document.getElementById('barcode');
+            var barcodeScanOpen = document.getElementById('barcode-scan-open');
+            var barcodeStatus = document.getElementById('barcode-status');
+
+            // Traduce el error de la cámara a un mensaje claro en español.
+            function barcodeErrorMessage(error) {
+                var name = error && error.name;
+                var message = (error && error.message) || '';
+
+                if (name === 'NotAllowedError' || /permission|denied/i.test(message)) {
+                    return 'Permiso de cámara denegado. Habilítalo en el navegador e inténtalo de nuevo.';
+                }
+                if (name === 'NotFoundError' || name === 'OverconstrainedError' || /no camera|not found/i.test(message)) {
+                    return 'No se encontró una cámara disponible en este dispositivo.';
+                }
+                if (name === 'NotReadableError') {
+                    return 'La cámara está en uso por otra aplicación. Ciérrala e inténtalo de nuevo.';
+                }
+                if (name === 'SecurityError') {
+                    return 'El acceso a la cámara requiere una conexión segura (HTTPS). Puedes escribir el código en el campo.';
+                }
+                return 'No se pudo iniciar la cámara. Escribe el código directamente en el campo.';
+            }
+
+            function setBarcodeStatus(message, isError) {
+                if (!barcodeStatus) { return; }
+                barcodeStatus.textContent = message;
+                barcodeStatus.classList.toggle('text-red-600', !!isError);
+                barcodeStatus.classList.toggle('text-gray-500', !isError);
+            }
+
+            window.startBarcodeScanner = function () {
+                setBarcodeStatus('Iniciando la cámara…', false);
+
+                if (!window.MaxxiBarcodeScanner) {
+                    setBarcodeStatus('El escáner aún no está listo. Intenta de nuevo en un momento.', true);
+                    return;
+                }
+
+                window.MaxxiBarcodeScanner.start('barcode-reader', function (decodedText) {
+                    // Éxito: se detiene la cámara, se cierra el modal y se coloca el código en el campo.
+                    window.stopBarcodeScanner();
+                    window.dispatchEvent(new CustomEvent('close-modal', { detail: 'barcode-scanner' }));
+
+                    if (barcodeInput) {
+                        barcodeInput.value = (decodedText || '').trim();
+                        barcodeInput.focus();
+                    }
+                }, function (error) {
+                    setBarcodeStatus(barcodeErrorMessage(error), true);
+                });
+            };
+
+            window.stopBarcodeScanner = function () {
+                if (window.MaxxiBarcodeScanner) { window.MaxxiBarcodeScanner.stop(); }
+            };
+
+            if (barcodeScanOpen) {
+                barcodeScanOpen.addEventListener('click', function () {
+                    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'barcode-scanner' }));
+                });
+            }
+        })();
+    </script>
+
+    @once
+        @vite('resources/js/barcode-scanner.js')
+    @endonce
 </x-layouts.sistema>

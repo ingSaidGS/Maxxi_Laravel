@@ -45,9 +45,17 @@ class ProductPresentationController extends Controller
      */
     public function show(ProductPresentation $productPresentation): View
     {
-        $productPresentation->load(['product', 'unit']);
+        $productPresentation->load(['product.baseUnit', 'unit']);
 
-        return view('product-presentation.show', ['presentation' => $productPresentation]);
+        // Solo para mostrar el costo de la presentación (no se guarda): se calcula en la vista.
+        $purchaseCostPerBaseUnit = $productPresentation->product
+            ? $this->service->purchaseCostPerBaseUnit($productPresentation->product)
+            : null;
+
+        return view('product-presentation.show', [
+            'presentation' => $productPresentation,
+            'purchaseCostPerBaseUnit' => $purchaseCostPerBaseUnit,
+        ]);
     }
 
     /**

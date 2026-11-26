@@ -310,7 +310,7 @@ Aplica a perfil, restablecimiento y CRUD de usuarios.
 - `base_unit_cost` del producto = `reference_purchase_cost / conversion_factor`.
 - `sale_price` de cada presentación activa con `sale_enable` se recalcula como
   `costo_unitario_base * conversion_factor + desired_profit`, con redondeo especial:
-  decimal `< 0.3` → hacia abajo; `0.3–0.6` → `N.5`; `> 0.6` → `N+1`.
+  decimal `< 0.1` → hacia abajo; `0.1` a `< 0.7` → `N.5`; `>= 0.7` → `N+1`.
 - Solo puede existir **una** presentación `purchase_enable + active` por producto
   (validado en el servicio, no en la base).
 - `update` de compra solo modifica la cabecera; las líneas son históricas.

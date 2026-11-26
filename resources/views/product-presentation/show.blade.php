@@ -17,6 +17,13 @@
     };
 
     $baseUnitSymbol = $presentation->product?->baseUnit?->symbol;
+
+    // Costo de esta presentación = costo por unidad mínima × factor de conversión.
+    // Es solo visual: se calcula al mostrar porque varía con cada compra.
+    $conversionFactor = (int) $presentation->conversion_factor;
+    $presentationCost = $purchaseCostPerBaseUnit !== null && $conversionFactor > 0
+        ? $purchaseCostPerBaseUnit * $conversionFactor
+        : null;
 @endphp
 
 <x-layouts.sistema title="Presentación #{{ $presentation->id }}">
@@ -124,6 +131,21 @@
             <div>
                 <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Costo de compra de referencia</dt>
                 <dd class="mt-1 text-sm tabular-nums text-gray-800">{{ $presentation->reference_purchase_cost !== null ? $formatAmount($presentation->reference_purchase_cost).' Bs.' : '—' }}</dd>
+            </div>
+
+            <div>
+                <dt class="mt-0 text-xs font-medium uppercase tracking-wide text-gray-400">Costo de esta presentación</dt>
+                <dd class="mt-1 text-sm tabular-nums text-gray-800">
+                    @if ($presentationCost !== null)
+                        {{ $formatAmount($presentationCost) }} Bs.
+                        <span class="mt-0.5 block text-xs text-gray-500">
+                            {{ $formatAmount($purchaseCostPerBaseUnit) }} Bs. por {{ $baseUnitSymbol ?? 'unidad mínima' }} × {{ $conversionFactor }}
+                        </span>
+                    @else
+                        <span class="text-gray-400">—</span>
+                        <span class="mt-0.5 block text-xs text-gray-400">Requiere una presentación de compra activa</span>
+                    @endif
+                </dd>
             </div>
 
             <div>

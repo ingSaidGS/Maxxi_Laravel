@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RemembersIndexUrl;
 use App\Http\Requests\Purchase\StorePurchaseRequest;
 use App\Http\Requests\Purchase\UpdatePurchaseRequest;
 use App\Models\ProductPresentation;
@@ -16,6 +17,20 @@ use Illuminate\View\View;
 
 class PurchaseController extends Controller
 {
+    use RemembersIndexUrl;
+
+    /**
+     * Clave de sesión con la última URL del listado (página, fechas, búsqueda y
+     * cantidad por página), para volver a él sin perder la posición. Ver
+     * RemembersIndexUrl.
+     */
+    public const INDEX_URL_SESSION_KEY = 'purchases.index_url';
+
+    /**
+     * Ruta del listado cuando no hay URL guardada.
+     */
+    public const INDEX_ROUTE = 'purchases.index';
+
     public function __construct(private readonly PurchaseService $purchases) {}
 
     /**
@@ -31,7 +46,7 @@ class PurchaseController extends Controller
      * posible encontrar compras anteriores aunque hoy no haya compras. El rango
      * de fechas acota siempre el resultado cuando viene indicado.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $perPage = (int) $request->input('per_page', 15);
 
@@ -57,6 +72,10 @@ class PurchaseController extends Controller
             ->orderByDesc('purchased_at')
             ->paginate($perPage)
             ->withQueryString();
+
+        if ($redirect = $this->rememberIndexUrl($request, $purchases)) {
+            return $redirect;
+        }
 
         $summary = [
             'count' => (int) ($summary->purchases_count ?? 0),

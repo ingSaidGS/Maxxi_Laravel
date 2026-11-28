@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RemembersIndexUrl;
 use App\Models\Product;
 use App\Models\ProductPresentation;
 use App\Models\Unit;
@@ -13,12 +14,19 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    use RemembersIndexUrl;
+
     /**
      * Clave de sesión con la última URL del listado (página, búsqueda, estado y
-     * cantidad por página), para volver a él desde la ficha o la edición sin
-     * perder la posición.
+     * cantidad por página), para volver a él sin perder la posición. Ver
+     * RemembersIndexUrl.
      */
     public const INDEX_URL_SESSION_KEY = 'products.index_url';
+
+    /**
+     * Ruta del listado cuando no hay URL guardada.
+     */
+    public const INDEX_ROUTE = 'products.index';
 
     /**
      * Display a listing of the resource.
@@ -62,11 +70,9 @@ class ProductController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        if ($products->currentPage() > $products->lastPage()) {
-            return redirect()->to($products->url($products->lastPage()));
+        if ($redirect = $this->rememberIndexUrl($request, $products)) {
+            return $redirect;
         }
-
-        $request->session()->put(self::INDEX_URL_SESSION_KEY, $request->fullUrl());
 
         return view('product.index', compact(
             'products',
@@ -282,15 +288,6 @@ class ProductController extends Controller
             ->orderBy('name')
             ->orderBy('id')
             ->first(['id', 'name']);
-    }
-
-    /**
-     * Última URL del listado guardada en sesión, o el listado sin filtros si no
-     * hay ninguna (por ejemplo, al entrar directo a una ficha).
-     */
-    private function indexUrl(): string
-    {
-        return session(self::INDEX_URL_SESSION_KEY, route('products.index'));
     }
 
     /**

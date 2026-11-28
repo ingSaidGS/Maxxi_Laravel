@@ -29,7 +29,7 @@
                 </svg>
                 Ver detalle
             </a>
-            <a href="{{ route('sales.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
+            <a href="{{ session(\App\Http\Controllers\SaleController::INDEX_URL_SESSION_KEY, route('sales.index')) }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
@@ -185,7 +185,7 @@
 
         {{-- Acciones --}}
         <div class="flex flex-col gap-2 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end">
-            <a href="{{ route('sales.index') }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">Cancelar</a>
+            <a href="{{ session(\App\Http\Controllers\SaleController::INDEX_URL_SESSION_KEY, route('sales.index')) }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">Cancelar</a>
             <x-boton-envio pending="Actualizando venta…" class="{{ $botones['primario'] }} w-full sm:w-auto">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />

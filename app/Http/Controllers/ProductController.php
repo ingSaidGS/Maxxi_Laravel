@@ -58,6 +58,7 @@ class ProductController extends Controller
             ->where('active', $estado === 'active')
             ->with(['baseUnit', 'presentations.unit'])
             ->orderBy('name')
+            ->orderBy('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -135,7 +136,9 @@ class ProductController extends Controller
     {
         $product->load(['baseUnit', 'presentations.unit']);
 
-        return view('product.show', compact('product'));
+        $nextProduct = $this->nextProduct($product);
+
+        return view('product.show', compact('product', 'nextProduct'));
     }
 
     /**
@@ -252,6 +255,33 @@ class ProductController extends Controller
         return redirect()
             ->to($this->indexUrl())
             ->with('status', 'Producto reactivado correctamente.');
+    }
+
+    /**
+     * Producto que sigue al dado en el listado, con el mismo orden (nombre e id)
+     * y los mismos filtros (búsqueda y estado) de la última URL del listado
+     * guardada en sesión. Sin URL guardada, usa el listado por defecto
+     * (activos, sin búsqueda). Devuelve null si es el último.
+     */
+    private function nextProduct(Product $product): ?Product
+    {
+        parse_str((string) parse_url($this->indexUrl(), PHP_URL_QUERY), $filters);
+
+        $search = is_string($filters['search'] ?? null) ? trim($filters['search']) : '';
+        $estado = ($filters['estado'] ?? null) === 'inactive' ? 'inactive' : 'active';
+
+        return $this->searchedProducts($search)
+            ->where('active', $estado === 'active')
+            ->where(function (Builder $query) use ($product) {
+                $query->where('name', '>', $product->name)
+                    ->orWhere(function (Builder $query) use ($product) {
+                        $query->where('name', $product->name)
+                            ->where('id', '>', $product->id);
+                    });
+            })
+            ->orderBy('name')
+            ->orderBy('id')
+            ->first(['id', 'name']);
     }
 
     /**

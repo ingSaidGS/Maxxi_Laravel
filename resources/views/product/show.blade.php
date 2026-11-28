@@ -101,6 +101,22 @@
                 </svg>
                 Volver al listado
             </a>
+            {{-- Siguiente producto según el orden y los filtros del listado. --}}
+            @if ($nextProduct)
+                <a href="{{ route('products.show', $nextProduct) }}" title="{{ $nextProduct->name }}" class="{{ $botones['secundario'] }} w-full sm:w-auto">
+                    Siguiente producto
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </a>
+            @else
+                <span aria-disabled="true" title="Este es el último producto del listado" class="{{ $botones['secundario'] }} w-full cursor-not-allowed opacity-50 hover:bg-white sm:w-auto">
+                    Siguiente producto
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </span>
+            @endif
             @can('manage-catalog')
                 <a href="{{ route('products.edit', $product) }}" class="{{ $botones['marino'] }} w-full sm:w-auto">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">

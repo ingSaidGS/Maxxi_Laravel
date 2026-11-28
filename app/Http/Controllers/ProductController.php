@@ -14,6 +14,13 @@ use Illuminate\View\View;
 class ProductController extends Controller
 {
     /**
+     * Clave de sesión con la última URL del listado (página, búsqueda, estado y
+     * cantidad por página), para volver a él desde la ficha o la edición sin
+     * perder la posición.
+     */
+    public const INDEX_URL_SESSION_KEY = 'products.index_url';
+
+    /**
      * Display a listing of the resource.
      *
      * El listado se filtra en el servidor (sobre todos los productos, no solo
@@ -26,6 +33,8 @@ class ProductController extends Controller
      */
     public function index(Request $request): View
     {
+        $request->session()->put(self::INDEX_URL_SESSION_KEY, $request->fullUrl());
+
         $perPage = (int) $request->input('per_page', 15);
 
         if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
@@ -219,7 +228,7 @@ class ProductController extends Controller
         $product->update(['active' => false]);
 
         return redirect()
-            ->route('products.index')
+            ->to($this->indexUrl())
             ->with('status', 'Producto dado de baja correctamente.');
     }
 
@@ -233,8 +242,17 @@ class ProductController extends Controller
         $product->update(['active' => true]);
 
         return redirect()
-            ->route('products.index')
+            ->to($this->indexUrl())
             ->with('status', 'Producto reactivado correctamente.');
+    }
+
+    /**
+     * Última URL del listado guardada en sesión, o el listado sin filtros si no
+     * hay ninguna (por ejemplo, al entrar directo a una ficha).
+     */
+    private function indexUrl(): string
+    {
+        return session(self::INDEX_URL_SESSION_KEY, route('products.index'));
     }
 
     /**

@@ -30,11 +30,13 @@ class ProductController extends Controller
      * - "estado": "active" (por defecto) o "inactive".
      *
      * Los contadores de activos/inactivos respetan la búsqueda.
+     *
+     * Si la página pedida quedó fuera de rango (por ejemplo, al dar de baja el
+     * único producto de la última página), redirige a la última página con
+     * resultados, conservando los filtros.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
-        $request->session()->put(self::INDEX_URL_SESSION_KEY, $request->fullUrl());
-
         $perPage = (int) $request->input('per_page', 15);
 
         if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
@@ -58,6 +60,12 @@ class ProductController extends Controller
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
+
+        if ($products->currentPage() > $products->lastPage()) {
+            return redirect()->to($products->url($products->lastPage()));
+        }
+
+        $request->session()->put(self::INDEX_URL_SESSION_KEY, $request->fullUrl());
 
         return view('product.index', compact(
             'products',

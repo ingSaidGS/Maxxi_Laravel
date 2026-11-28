@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RemembersIndexUrl;
 use App\Models\Product;
 use App\Models\ProductPresentation;
 use App\Models\Unit;
@@ -13,6 +14,20 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    use RemembersIndexUrl;
+
+    /**
+     * Clave de sesión con la última URL del listado (página, búsqueda, estado y
+     * cantidad por página), para volver a él sin perder la posición. Ver
+     * RemembersIndexUrl.
+     */
+    public const INDEX_URL_SESSION_KEY = 'products.index_url';
+
+    /**
+     * Ruta del listado cuando no hay URL guardada.
+     */
+    public const INDEX_ROUTE = 'products.index';
+
     /**
      * Display a listing of the resource.
      *
@@ -23,8 +38,12 @@ class ProductController extends Controller
      * - "estado": "active" (por defecto) o "inactive".
      *
      * Los contadores de activos/inactivos respetan la búsqueda.
+     *
+     * Si la página pedida quedó fuera de rango (por ejemplo, al dar de baja el
+     * único producto de la última página), redirige a la última página con
+     * resultados, conservando los filtros.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $perPage = (int) $request->input('per_page', 15);
 
@@ -47,8 +66,13 @@ class ProductController extends Controller
             ->where('active', $estado === 'active')
             ->with(['baseUnit', 'presentations.unit'])
             ->orderBy('name')
+            ->orderBy('id')
             ->paginate($perPage)
             ->withQueryString();
+
+        if ($redirect = $this->rememberIndexUrl($request, $products)) {
+            return $redirect;
+        }
 
         return view('product.index', compact(
             'products',
@@ -118,7 +142,9 @@ class ProductController extends Controller
     {
         $product->load(['baseUnit', 'presentations.unit']);
 
-        return view('product.show', compact('product'));
+        $nextProduct = $this->nextProduct($product);
+
+        return view('product.show', compact('product', 'nextProduct'));
     }
 
     /**
@@ -219,7 +245,7 @@ class ProductController extends Controller
         $product->update(['active' => false]);
 
         return redirect()
-            ->route('products.index')
+            ->to($this->indexUrl())
             ->with('status', 'Producto dado de baja correctamente.');
     }
 
@@ -233,8 +259,35 @@ class ProductController extends Controller
         $product->update(['active' => true]);
 
         return redirect()
-            ->route('products.index')
+            ->to($this->indexUrl())
             ->with('status', 'Producto reactivado correctamente.');
+    }
+
+    /**
+     * Producto que sigue al dado en el listado, con el mismo orden (nombre e id)
+     * y los mismos filtros (búsqueda y estado) de la última URL del listado
+     * guardada en sesión. Sin URL guardada, usa el listado por defecto
+     * (activos, sin búsqueda). Devuelve null si es el último.
+     */
+    private function nextProduct(Product $product): ?Product
+    {
+        parse_str((string) parse_url($this->indexUrl(), PHP_URL_QUERY), $filters);
+
+        $search = is_string($filters['search'] ?? null) ? trim($filters['search']) : '';
+        $estado = ($filters['estado'] ?? null) === 'inactive' ? 'inactive' : 'active';
+
+        return $this->searchedProducts($search)
+            ->where('active', $estado === 'active')
+            ->where(function (Builder $query) use ($product) {
+                $query->where('name', '>', $product->name)
+                    ->orWhere(function (Builder $query) use ($product) {
+                        $query->where('name', $product->name)
+                            ->where('id', '>', $product->id);
+                    });
+            })
+            ->orderBy('name')
+            ->orderBy('id')
+            ->first(['id', 'name']);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RemembersIndexUrl;
 use App\Models\ProductPresentation;
 use App\Models\Sale;
 use App\Services\ProfitService;
@@ -18,6 +19,20 @@ use Illuminate\View\View;
 
 class SaleController extends Controller
 {
+    use RemembersIndexUrl;
+
+    /**
+     * Clave de sesión con la última URL del listado (página, fechas, estado,
+     * búsqueda y cantidad por página), para volver a él sin perder la posición.
+     * Ver RemembersIndexUrl.
+     */
+    public const INDEX_URL_SESSION_KEY = 'sales.index_url';
+
+    /**
+     * Ruta del listado cuando no hay URL guardada.
+     */
+    public const INDEX_ROUTE = 'sales.index';
+
     public function __construct(private readonly StockService $stock) {}
 
     /**
@@ -33,7 +48,7 @@ class SaleController extends Controller
      * posible encontrar ventas anteriores aunque hoy no haya ventas. El rango de
      * fechas acota siempre el resultado cuando viene indicado.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $perPage = (int) $request->input('per_page', 15);
 
@@ -64,6 +79,10 @@ class SaleController extends Controller
             ->orderByDesc('sold_at')
             ->paginate($perPage)
             ->withQueryString();
+
+        if ($redirect = $this->rememberIndexUrl($request, $sales)) {
+            return $redirect;
+        }
 
         $summary = [
             'count' => (int) ($summary->sales_count ?? 0),
@@ -296,7 +315,7 @@ class SaleController extends Controller
     public function cobrar(Request $request, Sale $sale): RedirectResponse
     {
         if ($sale->status !== 'fiada') {
-            return redirect()->route('sales.index')
+            return redirect()->to($this->indexUrl())
                 ->withErrors(['cobro' => 'Esta venta ya está pagada.']);
         }
 
@@ -337,7 +356,7 @@ class SaleController extends Controller
             $message .= ' Vuelto: Bs. '.number_format($amounts['change'], 1).'.';
         }
 
-        return redirect()->route('sales.index')->with('status', $message);
+        return redirect()->to($this->indexUrl())->with('status', $message);
     }
 
     /**

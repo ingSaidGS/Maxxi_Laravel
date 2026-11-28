@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RemembersIndexUrl;
 use App\Http\Requests\SaleNote\DeliverSaleNoteRequest;
 use App\Http\Requests\SaleNote\RefreshSaleNotePricesRequest;
 use App\Http\Requests\SaleNote\StoreSaleNoteDetailRequest;
@@ -22,6 +23,20 @@ use Illuminate\View\View;
 
 class SaleNoteController extends Controller
 {
+    use RemembersIndexUrl;
+
+    /**
+     * Clave de sesión con la última URL del listado (página, fechas, estado,
+     * búsqueda y cantidad por página), para volver a él sin perder la posición.
+     * Ver RemembersIndexUrl.
+     */
+    public const INDEX_URL_SESSION_KEY = 'sale-notes.index_url';
+
+    /**
+     * Ruta del listado cuando no hay URL guardada.
+     */
+    public const INDEX_ROUTE = 'sale-notes.index';
+
     public function __construct(private readonly SaleNoteService $saleNotes) {}
 
     /**
@@ -37,7 +52,7 @@ class SaleNoteController extends Controller
      * para poder encontrar notas anteriores aunque hoy no haya. El rango de
      * fechas acota siempre el resultado cuando viene indicado.
      */
-    public function index(Request $request, ProfitService $profits): View
+    public function index(Request $request, ProfitService $profits): View|RedirectResponse
     {
         $perPage = (int) $request->input('per_page', 15);
 
@@ -74,6 +89,10 @@ class SaleNoteController extends Controller
             ->orderByDesc('noted_at')
             ->paginate($perPage)
             ->withQueryString();
+
+        if ($redirect = $this->rememberIndexUrl($request, $saleNotes)) {
+            return $redirect;
+        }
 
         $summary = [
             'count' => (int) ($summary->notes_count ?? 0),
@@ -181,7 +200,7 @@ class SaleNoteController extends Controller
         $this->saleNotes->cancel($saleNote);
 
         return redirect()
-            ->route('sale-notes.index')
+            ->to($this->indexUrl())
             ->with('status', 'Nota de venta anulada correctamente.');
     }
 
